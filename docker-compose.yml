@@ -3,7 +3,7 @@ services:
     build:
       context: ..
       dockerfile: la-passione/Dockerfile.local
-    image: ghcr.io/ai-passione/la-passione:v1.0.2
+    image: ghcr.io/ai-passione/la-passione:production
     env_file:
       - .env
     ports:
@@ -56,12 +56,7 @@ services:
       - NOTION_API_KEY_KOWALSKI=${NOTION_API_KEY_KOWALSKI}
       - AGENT_CONTEXT_ENABLED=${AGENT_CONTEXT_ENABLED:-true}
       - DUCKDB_DWH_PATH=${DUCKDB_DWH_PATH:-/app/data/duckdb_dwh.db}
-      - MATTERMOST_URL=${MATTERMOST_URL:-http://mattermost:8065}
-      - MATTERMOST_BOT_TOKEN_ALFREDO=${MATTERMOST_BOT_TOKEN_ALFREDO}
-      - MATTERMOST_BOT_TOKEN_RICCARDO=${MATTERMOST_BOT_TOKEN_RICCARDO}
-      - MATTERMOST_BOT_TOKEN_ROSSINI=${MATTERMOST_BOT_TOKEN_ROSSINI}
-      - MATTERMOST_BOT_TOKEN_KOWALSKI=${MATTERMOST_BOT_TOKEN_KOWALSKI}
-      - MATTERMOST_BOT_TOKEN_SYSTEM=${MATTERMOST_BOT_TOKEN_SYSTEM}
+
     deploy:
       resources:
         limits:
@@ -75,10 +70,6 @@ services:
       redis:
         condition: service_started
       ollama:
-        condition: service_healthy
-      mattermost:
-        condition: service_started
-      mattermost-db:
         condition: service_healthy
 
   frontend:
@@ -149,57 +140,7 @@ services:
       timeout: 5s
       retries: 10
 
-
-
-  mattermost-db:
-    image: postgres:15-alpine
-    environment:
-      - POSTGRES_USER=${MATTERMOST_DB_USER:-mmuser}
-      - POSTGRES_PASSWORD=${MATTERMOST_DB_PASSWORD:-mmuser_password}
-      - POSTGRES_DB=${MATTERMOST_DB_NAME:-mattermost}
-    volumes:
-      - mattermost_db_data:/var/lib/postgresql/data
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${MATTERMOST_DB_USER:-mmuser} -d ${MATTERMOST_DB_NAME:-mattermost}" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  mattermost:
-    build:
-      context: ../famiglia-core
-      dockerfile: Dockerfile.mattermost
-    depends_on:
-      mattermost-db:
-        condition: service_healthy
-    ports:
-      - "8065:8065"
-    environment:
-      - MM_SERVICESETTINGS_SITEURL=${MATTERMOST_URL:-http://localhost:8065}
-      - MM_SERVICESETTINGS_ENABLELOCALMODE=true
-      - MM_SQLSETTINGS_DRIVERNAME=postgres
-      - MM_SQLSETTINGS_DATASOURCE=postgres://${MATTERMOST_DB_USER:-mmuser}:${MATTERMOST_DB_PASSWORD:-mmuser_password}@mattermost-db:5432/${MATTERMOST_DB_NAME:-mattermost}?sslmode=disable&connect_timeout=10
-      - MM_SERVICESETTINGS_ENABLEUSERACCESSTOKENS=true
-      - MM_SERVICESETTINGS_ENABLEBOTACCOUNTCREATION=true
-      - MM_TEAMSETTINGS_ENABLEOPENSERVER=true
-    volumes:
-      - mattermost_data:/mattermost/data
-      - mattermost_logs:/mattermost/logs
-      - mattermost_config:/mattermost/config
-      - mattermost_plugins:/mattermost/plugins
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-        reservations:
-          memory: 512M
-
 volumes:
   redis_data:
   postgres_data:
   ollama_data:
-  mattermost_db_data:
-  mattermost_data:
-  mattermost_logs:
-  mattermost_config:
-  mattermost_plugins:
