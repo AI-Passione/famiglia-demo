@@ -31,4 +31,27 @@ If you are an AI agent working in this repo:
 
 ---
 
+## 🐳 Docker Quickstart (Full Stack)
+Run the entire Famiglia ecosystem locally using production images from GHCR.
+
+1. **Prerequisites**: Ensure you have [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) installed.
+2. **Setup**: Copy `.env.example` to `.env` and configure your API keys.
+3. **Fetch Images**: 
+   ```bash
+   make pull
+   ```
+4. **Launch**:
+   ```bash
+   make up
+   ```
+5. **Monitor**:
+   ```bash
+   make logs
+   ```
+
+> [!NOTE]
+> This stack uses local Postgres and Redis instances. Ensure your `.env` is properly configured to point to these services within the Docker network.
+
+---
+
 *Keep the vibes high. Welcome to the Family.*
