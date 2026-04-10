@@ -1,0 +1,146 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: la-passione/Dockerfile.local
+    image: ghcr.io/ai-passione/la-passione:production
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PYTHONPATH=/app/src
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-passione_admin}
+      - DB_PASSWORD=${DB_PASSWORD:-passione_password}
+      - DB_NAME=${DB_NAME:-passione_db}
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SLACK_BOT_TOKEN_ALFREDO=${SLACK_BOT_TOKEN_ALFREDO}
+      - SLACK_BOT_TOKEN_VITO=${SLACK_BOT_TOKEN_VITO}
+      - SLACK_BOT_TOKEN_RICCARDO=${SLACK_BOT_TOKEN_RICCARDO}
+      - SLACK_BOT_TOKEN_ROSSINI=${SLACK_BOT_TOKEN_ROSSINI}
+      - SLACK_BOT_TOKEN_TOMMY=${SLACK_BOT_TOKEN_TOMMY}
+      - SLACK_BOT_TOKEN_BELLA=${SLACK_BOT_TOKEN_BELLA}
+      - SLACK_BOT_TOKEN_KOWALSKI=${SLACK_BOT_TOKEN_KOWALSKI}
+      - SLACK_BOT_TOKEN_SYSTEM=${SLACK_BOT_TOKEN_SYSTEM}
+      - SLACK_APP_TOKEN=${SLACK_APP_TOKEN}
+      - SLACK_APP_TOKEN_ALFREDO=${SLACK_APP_TOKEN_ALFREDO}
+      - SLACK_APP_TOKEN_VITO=${SLACK_APP_TOKEN_VITO}
+      - SLACK_APP_TOKEN_RICCARDO=${SLACK_APP_TOKEN_RICCARDO}
+      - SLACK_APP_TOKEN_ROSSINI=${SLACK_APP_TOKEN_ROSSINI}
+      - SLACK_APP_TOKEN_TOMMY=${SLACK_APP_TOKEN_TOMMY}
+      - SLACK_APP_TOKEN_BELLA=${SLACK_APP_TOKEN_BELLA}
+      - SLACK_APP_TOKEN_KOWALSKI=${SLACK_APP_TOKEN_KOWALSKI}
+      - USER_SLACK_ID=${USER_SLACK_ID}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
+      - OLLAMA_FALLBACK_MODEL=${OLLAMA_FALLBACK_MODEL:-gemma3:4b}
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY}
+      - APP_ENV=${APP_ENV:-development}
+      - DEV_CHANNEL_ID=${DEV_CHANNEL_ID}
+      - GITHUB_APP_ID_RICCARDO=${GITHUB_APP_ID_RICCARDO}
+      - GITHUB_APP_INSTALLATION_ID_RICCARDO=${GITHUB_APP_INSTALLATION_ID_RICCARDO}
+      - GITHUB_APP_PRIVATE_KEY_RICCARDO=${GITHUB_APP_PRIVATE_KEY_RICCARDO}
+      - GITHUB_APP_ID_ROSSINI=${GITHUB_APP_ID_ROSSINI}
+      - GITHUB_APP_INSTALLATION_ID_ROSSINI=${GITHUB_APP_INSTALLATION_ID_ROSSINI}
+      - GITHUB_APP_PRIVATE_KEY_ROSSINI=${GITHUB_APP_PRIVATE_KEY_ROSSINI}
+      - NOTION_API_KEY_ROSSINI=${NOTION_API_KEY_ROSSINI}
+      - NOTION_API_KEY_KOWALSKI=${NOTION_API_KEY_KOWALSKI}
+      - AGENT_CONTEXT_ENABLED=${AGENT_CONTEXT_ENABLED:-true}
+      - DUCKDB_DWH_PATH=${DUCKDB_DWH_PATH:-/app/data/duckdb_dwh.db}
+
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          memory: 256M
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      ollama:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ../famiglia-core/src/famiglia_core/command_center/frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      app:
+        condition: service_started
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 32M
+    volumes:
+      - redis_data:/data
+
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+    environment:
+      - POSTGRES_USER=${DB_USER:-passione_admin}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-passione_password}
+      - POSTGRES_DB=${DB_NAME:-passione_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../famiglia-core/src/famiglia_core/db/schema.sql:/docker-entrypoint-initdb.d/00_schema.sql
+      - ../famiglia-core/src/famiglia_core/db/agents/souls.sql:/docker-entrypoint-initdb.d/01_souls.sql
+      - ../famiglia-core/src/famiglia_core/db/agents/skills.sql:/docker-entrypoint-initdb.d/02_skills.sql
+      - ../famiglia-core/src/famiglia_core/db/agents/tools.sql:/docker-entrypoint-initdb.d/03_tools.sql
+      - ../famiglia-core/src/famiglia_core/db/agents/resources.sql:/docker-entrypoint-initdb.d/04_resources.sql
+      - ../famiglia-core/src/famiglia_core/db/agents/workflows.sql:/docker-entrypoint-initdb.d/05_workflows.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-passione_admin} -d ${DB_NAME:-passione_db}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_KV_CACHE_TYPE=q8_0
+      - OLLAMA_FLASH_ATTENTION=1
+      - OLLAMA_KEEP_ALIVE=0 # Unload instantly to prevent cross-agent RAM collision
+      - OLLAMA_MAX_QUEUE=512 # Allow requests to queue instead of failing instantly
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: [ "CMD", "ollama", "list" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  redis_data:
+  postgres_data:
+  ollama_data:
