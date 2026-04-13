@@ -20,12 +20,28 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     env:
+      # SSH Configuration
       SSH_HOST: ${{ secrets.SSH_HOST || vars.SSH_HOST || vars.HETZNER_HOST }}
       SSH_USER: ${{ secrets.SSH_USER || vars.SSH_USER || vars.HETZNER_USER }}
       SSH_PORT: ${{ secrets.SSH_PORT || vars.SSH_PORT || '22' }}
       SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY || secrets.HETZNER_SSH_PRIVATE_KEY }}
       SSH_PRIVATE_KEY_BASE64: ${{ secrets.SSH_PRIVATE_KEY_BASE64 || secrets.HETZNER_SSH_PRIVATE_KEY_BASE64 }}
       SSH_PASSPHRASE: ${{ secrets.SSH_PASSPHRASE || secrets.HETZNER_SSH_PASSPHRASE }}
+      
+      # Application Secrets (mapped to GitHub Secrets)
+      APP_ENV: ${{ secrets.APP_ENV || 'production' }}
+      DB_USER: ${{ secrets.DB_USER }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DB_NAME: ${{ secrets.DB_NAME }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+      SLACK_APP_TOKEN: ${{ secrets.SLACK_APP_TOKEN }}
+      SLACK_BOT_TOKEN_SYSTEM: ${{ secrets.SLACK_BOT_TOKEN_SYSTEM }}
+      OLLAMA_HOST: ${{ secrets.OLLAMA_HOST || 'http://ollama:11434' }}
+      GITHUB_APP_ID_RICCARDO: ${{ secrets.GITHUB_APP_ID_RICCARDO }}
+      GITHUB_APP_PRIVATE_KEY_RICCARDO: ${{ secrets.GITHUB_APP_PRIVATE_KEY_RICCARDO }}
+      NOTION_API_KEY_ROSSINI: ${{ secrets.NOTION_API_KEY_ROSSINI }}
 
     steps:
       - name: Validate SSH configuration
@@ -66,6 +82,7 @@ jobs:
           key_path: ${{ env.SSH_KEY_FILE }}
           passphrase: ${{ env.SSH_PASSPHRASE }}
           port: ${{ env.SSH_PORT || '22' }}
+          envs: APP_ENV,DB_USER,DB_PASSWORD,DB_NAME,GEMINI_API_KEY,ANTHROPIC_API_KEY,PERPLEXITY_API_KEY,SLACK_APP_TOKEN,SLACK_BOT_TOKEN_SYSTEM,OLLAMA_HOST,GITHUB_APP_ID_RICCARDO,GITHUB_APP_PRIVATE_KEY_RICCARDO,NOTION_API_KEY_ROSSINI
           script: |
             set -eu
 
@@ -111,10 +128,24 @@ jobs:
 
             cd "$STACK_ROOT/famiglia-demo"
 
-            if [ ! -f .env ]; then
-              echo "Missing $STACK_ROOT/famiglia-demo/.env on the Hetzner host."
-              exit 1
-            fi
+            echo "Generating .env from GitHub Secrets..."
+            cat <<EOF > .env
+APP_ENV=$APP_ENV
+DB_USER=$DB_USER
+DB_PASSWORD=$DB_PASSWORD
+DB_NAME=$DB_NAME
+GEMINI_API_KEY=$GEMINI_API_KEY
+ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY
+PERPLEXITY_API_KEY=$PERPLEXITY_API_KEY
+SLACK_APP_TOKEN=$SLACK_APP_TOKEN
+SLACK_BOT_TOKEN_SYSTEM=$SLACK_BOT_TOKEN_SYSTEM
+OLLAMA_HOST=$OLLAMA_HOST
+GITHUB_APP_ID_RICCARDO=$GITHUB_APP_ID_RICCARDO
+GITHUB_APP_PRIVATE_KEY_RICCARDO=$GITHUB_APP_PRIVATE_KEY_RICCARDO
+NOTION_API_KEY_ROSSINI=$NOTION_API_KEY_ROSSINI
+EOF
+
+            chmod 600 .env
 
             docker compose pull || true
             docker compose up -d --build --remove-orphans
