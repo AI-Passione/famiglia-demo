@@ -38,31 +38,10 @@ jobs:
           mkdir -p ../../../../tests/command_center/frontend/
           cp ../../../../../tests/*.spec.ts ../../../../tests/command_center/frontend/
           
-          echo "Installing Supabase SDK..."
-          npm install @supabase/supabase-js --save
-
-      - name: Cleanup Unused Declarations
-        run: |
-          cd famiglia-core/src/famiglia_core/command_center/frontend
-          echo "Cleaning up unused code to satisfy TS strictness..."
-          # Remove unused interfaces from App.tsx
-          sed -i '/PaginatedTasks/d' src/App.tsx
-          sed -i '/PaginatedActions/d' src/App.tsx
-          # Prefix unused setters/state in App.tsx with underscores (satisfies TS without breaking references)
-          sed -i 's/selectedGraph,/_selectedGraph,/g' src/App.tsx
-          sed -i 's/setRecurringTasks/_setRecurringTasks/g' src/App.tsx
-          sed -i 's/setGraphs/_setGraphs/g' src/App.tsx
-          sed -i 's/setSelectedGraph/_setSelectedGraph/g' src/App.tsx
-          # Remove unused actions state and its fetcher from Operations.tsx
-          sed -i '/const \[actions, setActions\]/d' src/modules/Operations.tsx
-          sed -i 's/actionsData, //' src/modules/Operations.tsx
-          sed -i 's/apiService.getActions(50), //' src/modules/Operations.tsx
-          sed -i '/setActions(actionsData.actions)/d' src/modules/Operations.tsx
-
       - name: Install Dependencies
         run: |
           cd famiglia-core/src/famiglia_core/command_center/frontend
-          npm ci
+          npm install
 
       - name: Type Check Frontend
         run: |
@@ -74,4 +53,4 @@ jobs:
         run: |
           cd famiglia-core/src/famiglia_core/command_center/frontend
           echo "Running Injected Supabase Logic Tests..."
-          npx vitest run test_supabase_api_service.spec.ts
+          npx vitest run ../../../../tests/command_center/frontend/test_supabase_api_service.spec.ts

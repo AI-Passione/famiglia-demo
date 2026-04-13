@@ -13,20 +13,28 @@ index 6c828aa..17cd1da 100644
    "devDependencies": {
      "@eslint/js": "^9.39.4",
 diff --git a/src/App.tsx b/src/App.tsx
-index e6e4a32..7996489 100644
+index e6e4a32..965f262 100644
 --- a/src/App.tsx
 +++ b/src/App.tsx
-@@ -23,7 +23,8 @@ import { TerminalProvider } from './modules/TerminalContext';
+@@ -6,8 +6,6 @@ import type {
+   RecurringTask,
+   GraphDefinition,
+   AppSettings,
+-  PaginatedTasks,
+-  PaginatedActions,
+   ActionLog,
+ } from './types';
+ import { TopNav } from './modules/ui/TopNav';
+@@ -23,6 +21,8 @@ import { TerminalProvider } from './modules/TerminalContext';
  import { ToastProvider } from './modules/ui/ToastProvider';
  import { NotificationProvider } from './modules/NotificationContext';
  import { DirectiveModal } from './modules/ui/DirectiveModal';
--import { API_BASE } from './config';
 +import { apiService } from './apiService';
 +import { supabase, isSupabaseConfigured } from './supabaseClient';
+ import { API_BASE } from './config';
  
  const SETTINGS_STORAGE_KEY = 'command_center_settings';
- const DEFAULT_SETTINGS: AppSettings = {
-@@ -92,24 +93,21 @@ function App() {
+@@ -92,24 +92,21 @@ function App() {
    useEffect(() => {
      const hydrateSettings = async () => {
        try {
@@ -65,7 +73,7 @@ index e6e4a32..7996489 100644
        } finally {
          setSettingsHydrated(true);
        }
-@@ -132,13 +130,9 @@ function App() {
+@@ -132,13 +129,9 @@ function App() {
  
      const sync = setTimeout(async () => {
        try {
@@ -81,7 +89,7 @@ index e6e4a32..7996489 100644
        }
      }, 250);
  
-@@ -148,59 +142,52 @@ function App() {
+@@ -148,25 +141,16 @@ function App() {
    useEffect(() => {
      const fetchData = async () => {
        try {
@@ -90,10 +98,11 @@ index e6e4a32..7996489 100644
 -          fetch(`${API_BASE}/actions?limit=24`),
 -          fetch(`${API_BASE}/tasks?limit=40`),
 -          fetch(`${API_BASE}/recurring-tasks`)
-+        const [agentsData, actionsData, tasksData] = await Promise.all([
++        const [agentsData, actionsData, tasksData, recurringTasksRes] = await Promise.all([
 +          apiService.getAgents(),
 +          apiService.getActions(24),
 +          apiService.getTasks(40),
++          fetch(`${API_BASE}/recurring-tasks`),
          ]);
          
 -        if (agentsRes.ok) {
@@ -108,40 +117,23 @@ index e6e4a32..7996489 100644
 -          const data = await tasksRes.json() as PaginatedTasks;
 -          setTasks(Array.isArray(data.tasks) ? data.tasks : []);
 -        }
--        if (recurringTasksRes.ok) {
--          const data = await recurringTasksRes.json();
--          setRecurringTasks(Array.isArray(data) ? data : []);
--        }
 +        setAgents(agentsData);
 +        setActions(actionsData.actions);
 +        setTasks(tasksData.tasks);
-       } catch (err) {
-         console.error("Failed to fetch data:", err);
+         if (recurringTasksRes.ok) {
+           const data = await recurringTasksRes.json();
+           setRecurringTasks(Array.isArray(data) ? data : []);
+@@ -195,11 +179,38 @@ function App() {
        }
      };
  
--    const fetchGraphs = async () => {
--      try {
--        const response = await fetch(`${API_BASE}/operations/graphs`);
--        if (response.ok) {
--          const data = await response.json();
--          const validGraphs = Array.isArray(data) ? data : [];
--          setGraphs(validGraphs);
--          if (validGraphs.length > 0 && !selectedGraph) {
--            setSelectedGraph(validGraphs[0]);
--          }
--        } else {
--          setGraphs([]);
--        }
--      } catch (error) {
--        console.error("Failed to fetch graphs:", error);
--        setGraphs([]);
--      }
--    };
-+    fetchData();
- 
 -    fetchData(); // Initial fetch for agents, actions, tasks
 -    fetchGraphs(); // Initial fetch for graphs
++    fetchData();
++    fetchGraphs();
+ 
+-    const interval = setInterval(fetchData, 5000); // Set up interval for recurring data fetch
+-    return () => clearInterval(interval); // Cleanup interval on unmount
 +    // --- Real-time Subscriptions ---
 +    if (isSupabaseConfigured()) {
 +      const channel = supabase
@@ -162,10 +154,7 @@ index e6e4a32..7996489 100644
 +          () => fetchData()
 +        )
 +        .subscribe();
- 
--    const interval = setInterval(fetchData, 5000); // Set up interval for recurring data fetch
--    return () => clearInterval(interval); // Cleanup interval on unmount
--  }, [selectedGraph]);
++
 +      return () => {
 +        supabase.removeChannel(channel);
 +      };
@@ -174,15 +163,14 @@ index e6e4a32..7996489 100644
 +      const interval = setInterval(fetchData, 5000);
 +      return () => clearInterval(interval);
 +    }
-+  }, []);
+   }, [selectedGraph]);
  
    return (
-     <ToastProvider>
 diff --git a/src/config.ts b/src/config.ts
-index 32948e9..1cde07c 100644
+index e6cf48b..3b50c84 100644
 --- a/src/config.ts
 +++ b/src/config.ts
-@@ -9,3 +9,7 @@ const rawApiBase = import.meta.env.VITE_API_BASE;
+@@ -11,3 +11,7 @@ export const BACKEND_BASE = normalizeUrl(rawBackendBase || DEFAULT_BACKEND_BASE)
  export const API_BASE = rawApiBase
    ? normalizeUrl(rawApiBase)
    : `${BACKEND_BASE}/api/v1`;
@@ -191,7 +179,7 @@ index 32948e9..1cde07c 100644
 +export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
 +export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 diff --git a/src/modules/Operations.tsx b/src/modules/Operations.tsx
-index 2aaf6b3..a449b15 100644
+index 2aaf6b3..389e12b 100644
 --- a/src/modules/Operations.tsx
 +++ b/src/modules/Operations.tsx
 @@ -1,11 +1,5 @@
@@ -207,7 +195,7 @@ index 2aaf6b3..a449b15 100644
  
  interface MissionLog {
    id: string;
-@@ -24,330 +18,120 @@ interface Conversation {
+@@ -24,330 +18,117 @@ interface Conversation {
    latest_agent: string;
  }
  
@@ -222,7 +210,6 @@ index 2aaf6b3..a449b15 100644
 -  // Dashboard Feeds State
 -  const [actions, setActions] = useState<ActionLog[]>([]);
 +export const Operations = () => {
-+  const [actions, setActions] = useState<any[]>([]);
    const [missionLogs, setMissionLogs] = useState<MissionLog[]>([]);
    const [conversations, setConversations] = useState<Conversation[]>([]);
 -  const [loading, setLoading] = useState(true);
@@ -233,8 +220,7 @@ index 2aaf6b3..a449b15 100644
 -        fetch(`${API_BASE}/actions?limit=50`),
 -        fetch(`${API_BASE}/operations/mission-logs/all`),
 -        fetch(`${API_BASE}/chat/conversations`)
-+      const [actionsData, logsData, convsData] = await Promise.all([
-+        apiService.getActions(50),
++      const [logsData, convsData] = await Promise.all([
 +        apiService.getMissionLogs(),
 +        apiService.getConversations()
        ]);
@@ -251,7 +237,6 @@ index 2aaf6b3..a449b15 100644
 -        const data = await convsRes.json();
 -        setConversations(data || []);
 -      }
-+      setActions(actionsData.actions);
 +      setMissionLogs(logsData as any);
 +      setConversations(convsData as any);
      } catch (err) {

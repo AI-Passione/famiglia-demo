@@ -50,42 +50,23 @@ jobs:
           echo "Copying Overlay Source files..."
           cp ../../../../../supabase/*.ts ./src/
           
-          echo "Installing Supabase SDK..."
-          npm install @supabase/supabase-js --save
-
-      - name: Cleanup Unused Declarations
-        run: |
-          cd famiglia-core/src/famiglia_core/command_center/frontend
-          echo "Cleaning up unused code to satisfy TS strictness..."
-          # Remove unused interfaces from App.tsx
-          sed -i '/PaginatedTasks/d' src/App.tsx
-          sed -i '/PaginatedActions/d' src/App.tsx
-          # Prefix unused setters/state in App.tsx with underscores (satisfies TS without breaking references)
-          sed -i 's/selectedGraph,/_selectedGraph,/g' src/App.tsx
-          sed -i 's/setRecurringTasks/_setRecurringTasks/g' src/App.tsx
-          sed -i 's/setGraphs/_setGraphs/g' src/App.tsx
-          sed -i 's/setSelectedGraph/_setSelectedGraph/g' src/App.tsx
-          # Remove unused actions state and its fetcher from Operations.tsx
-          sed -i '/const \[actions, setActions\]/d' src/modules/Operations.tsx
-          sed -i 's/actionsData, //' src/modules/Operations.tsx
-          sed -i 's/apiService.getActions(50), //' src/modules/Operations.tsx
-          sed -i '/setActions(actionsData.actions)/d' src/modules/Operations.tsx
-
-
-      - name: Install Dependencies
-        run: |
-          cd famiglia-core/src/famiglia_core/command_center/frontend
-          npm ci
+          echo "Installing Dependencies..."
+          npm install
 
       - name: Build Frontend
         run: |
           cd famiglia-core/src/famiglia_core/command_center/frontend
-          export VITE_BASE_PATH="/${{ github.event.repository.name }}/"
-          npm run build
-        env:
-          VITE_BASE_PATH: /${{ github.event.repository.name }}/
-          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          
+          echo "Creating Production Environment..."
+          cat <<EOF > .env.production
+          VITE_BASE_PATH=/${{ github.event.repository.name }}/
+          VITE_SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+          EOF
+          
+          echo "Building with Base Path: /${{ github.event.repository.name }}/"
+          npm run build -- --base=/${{ github.event.repository.name }}/
+
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
