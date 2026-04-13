@@ -48,7 +48,8 @@ jobs:
           # Remove unused interfaces from App.tsx
           sed -i '/PaginatedTasks/d' src/App.tsx
           sed -i '/PaginatedActions/d' src/App.tsx
-          # Prefix unused setters in App.tsx with underscores (satisfies TS without breaking references)
+          # Prefix unused setters/state in App.tsx with underscores (satisfies TS without breaking references)
+          sed -i 's/selectedGraph,/_selectedGraph,/g' src/App.tsx
           sed -i 's/setRecurringTasks/_setRecurringTasks/g' src/App.tsx
           sed -i 's/setGraphs/_setGraphs/g' src/App.tsx
           sed -i 's/setSelectedGraph/_setSelectedGraph/g' src/App.tsx
@@ -56,6 +57,7 @@ jobs:
           sed -i '/const \[actions, setActions\]/d' src/modules/Operations.tsx
           sed -i 's/actionsData, //' src/modules/Operations.tsx
           sed -i 's/apiService.getActions(50), //' src/modules/Operations.tsx
+          sed -i '/setActions(actionsData.actions)/d' src/modules/Operations.tsx
 
       - name: Install Dependencies
         run: |
