@@ -50,10 +50,9 @@ jobs:
           CANDIDATE_FILE="$RUNNER_TEMP/.ssh/deploy_key.candidate"
           VALID_KEY_REGEX='^-----BEGIN (OPENSSH|RSA|EC|DSA) PRIVATE KEY-----$'
 
-          if [ -n "$SSH_PRIVATE_KEY_BASE64" ]; then
-            printf '%s' "$SSH_PRIVATE_KEY_BASE64" | base64 --decode > "$KEY_FILE"
-          else
-            NORMALIZED_KEY="$SSH_PRIVATE_KEY"
+          write_raw_key() {
+            INPUT_KEY="$1"
+            NORMALIZED_KEY="$INPUT_KEY"
 
             case "$NORMALIZED_KEY" in
               \"*\")
@@ -67,6 +66,19 @@ jobs:
             else
               printf '%s\n' "$NORMALIZED_KEY" | tr -d '\r' > "$KEY_FILE"
             fi
+          }
+
+          if [ -n "$SSH_PRIVATE_KEY_BASE64" ]; then
+            CLEAN_BASE64="$(printf '%s' "$SSH_PRIVATE_KEY_BASE64" | tr -d '\r\n\t ')"
+
+            if printf '%s' "$CLEAN_BASE64" | base64 --decode > "$CANDIDATE_FILE" 2>/dev/null; then
+              mv "$CANDIDATE_FILE" "$KEY_FILE"
+            else
+              write_raw_key "$SSH_PRIVATE_KEY_BASE64"
+            fi
+          else
+            NORMALIZED_KEY="$SSH_PRIVATE_KEY"
+            write_raw_key "$NORMALIZED_KEY"
 
             if ! grep -Eq "$VALID_KEY_REGEX" "$KEY_FILE"; then
               if printf '%s' "$NORMALIZED_KEY" | tr -d '\r\n\t ' | base64 --decode > "$CANDIDATE_FILE" 2>/dev/null; then
