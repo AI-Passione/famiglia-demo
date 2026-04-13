@@ -1,8 +1,8 @@
 services:
   app:
     build:
-      context: ..
-      dockerfile: famiglia-core/Dockerfile
+      context: ../famiglia-core
+      dockerfile: Dockerfile
     image: ghcr.io/ai-passione/famiglia-core:production
     env_file:
       - .env
