@@ -24,6 +24,7 @@ jobs:
       SSH_USER: ${{ secrets.SSH_USER || vars.SSH_USER || vars.HETZNER_USER }}
       SSH_PORT: ${{ secrets.SSH_PORT || vars.SSH_PORT || '22' }}
       SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY || secrets.HETZNER_SSH_PRIVATE_KEY }}
+      SSH_PASSPHRASE: ${{ secrets.SSH_PASSPHRASE || secrets.HETZNER_SSH_PASSPHRASE }}
 
     steps:
       - name: Validate SSH configuration
@@ -47,6 +48,7 @@ jobs:
           host: ${{ env.SSH_HOST }}
           username: ${{ env.SSH_USER }}
           key: ${{ env.SSH_PRIVATE_KEY }}
+          passphrase: ${{ env.SSH_PASSPHRASE }}
           port: ${{ env.SSH_PORT }}
           script: |
             set -eu

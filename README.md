@@ -29,7 +29,18 @@ Configure these GitHub Actions secrets:
 - `SSH_HOST`
 - `SSH_USER`
 - `SSH_PRIVATE_KEY`
+- `SSH_PASSPHRASE` (only if the private key is encrypted)
 - `SSH_PORT` (optional, defaults to `22`)
+
+`SSH_PRIVATE_KEY` must contain the raw private key block with real line breaks, for example:
+
+```text
+-----BEGIN OPENSSH PRIVATE KEY-----
+...
+-----END OPENSSH PRIVATE KEY-----
+```
+
+Do not store the public key, and do not store a shell variable name like `$SSH_PRIVATE_KEY` as the secret value.
 
 The target server also needs:
 
