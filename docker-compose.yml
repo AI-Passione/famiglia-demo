@@ -2,8 +2,8 @@ services:
   app:
     build:
       context: ..
-      dockerfile: la-passione/Dockerfile.local
-    image: ghcr.io/ai-passione/la-passione:production
+      dockerfile: famiglia-core/Dockerfile
+    image: ghcr.io/ai-passione/famiglia-core:latest
     env_file:
       - .env
     ports:
