@@ -62,13 +62,17 @@ jobs:
       - name: Prepare SSH Key
         run: |
           if [ -n "$SSH_PRIVATE_KEY_BASE64" ]; then
-            echo "DECODED_SSH_KEY<<EOF" >> $GITHUB_ENV
-            echo "$SSH_PRIVATE_KEY_BASE64" | tr -d '\r\n\t ' | base64 --decode >> $GITHUB_ENV
-            echo "EOF" >> $GITHUB_ENV
+            {
+              echo "DECODED_SSH_KEY<<EOF"
+              echo "$SSH_PRIVATE_KEY_BASE64" | tr -d '\r\n\t ' | base64 --decode
+              echo "EOF"
+            } >> "$GITHUB_ENV"
           else
-            echo "DECODED_SSH_KEY<<EOF" >> $GITHUB_ENV
-            echo "$SSH_PRIVATE_KEY" | tr -d '\r' >> $GITHUB_ENV
-            echo "EOF" >> $GITHUB_ENV
+            {
+              echo "DECODED_SSH_KEY<<EOF"
+              echo "$SSH_PRIVATE_KEY" | tr -d '\r'
+              echo "EOF"
+            } >> "$GITHUB_ENV"
           fi
 
       - name: Deploy stack on Hetzner
@@ -125,22 +129,12 @@ jobs:
 
             cd "$STACK_ROOT/famiglia-demo"
 
-            echo "Generating .env from GitHub Secrets..."
-            cat <<EOF > .env
-APP_ENV="$APP_ENV"
-DB_USER="$DB_USER"
-DB_PASSWORD="$DB_PASSWORD"
-DB_NAME="$DB_NAME"
-GEMINI_API_KEY="$GEMINI_API_KEY"
-ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY"
-PERPLEXITY_API_KEY="$PERPLEXITY_API_KEY"
-SLACK_APP_TOKEN="$SLACK_APP_TOKEN"
-SLACK_BOT_TOKEN_SYSTEM="$SLACK_BOT_TOKEN_SYSTEM"
-OLLAMA_HOST="$OLLAMA_HOST"
-GITHUB_APP_ID_RICCARDO="$GITHUB_APP_ID_RICCARDO"
-GITHUB_APP_PRIVATE_KEY_RICCARDO="$GITHUB_APP_PRIVATE_KEY_RICCARDO"
-NOTION_API_KEY_ROSSINI="$NOTION_API_KEY_ROSSINI"
-EOF
+            echo "Generating .env from passed environment variables..."
+            : > .env
+            for var in APP_ENV DB_USER DB_PASSWORD DB_NAME GEMINI_API_KEY ANTHROPIC_API_KEY PERPLEXITY_API_KEY SLACK_APP_TOKEN SLACK_BOT_TOKEN_SYSTEM OLLAMA_HOST GITHUB_APP_ID_RICCARDO GITHUB_APP_PRIVATE_KEY_RICCARDO NOTION_API_KEY_ROSSINI; do
+              eval value="\${$var:-}"
+              echo "$var=\"$value\"" >> .env
+            done
 
             chmod 600 .env
 
