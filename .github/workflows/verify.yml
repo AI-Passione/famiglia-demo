@@ -4,6 +4,17 @@ on:
   workflow_call:
 
 jobs:
+  workflow_linter:
+    name: Workflow Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Download and Run actionlint
+        run: |
+          bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint -color
+
   deployment_config:
     name: Deployment Config Checks
     runs-on: ubuntu-latest
