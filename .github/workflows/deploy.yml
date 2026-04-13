@@ -40,9 +40,9 @@ jobs:
         run: |
           cd famiglia-core/src/famiglia_core/command_center/frontend
           echo "Applying Supabase Patch..."
-          patch -p1 < ../../../../../../supabase.patch
+          patch -p1 < ../../../../../supabase/supabase.patch
           echo "Copying Overlay Files..."
-          cp ../../../../../../command_center_overlay/*.ts ./src/
+          cp ../../../../../supabase/*.ts ./src/
           echo "Installing Supabase SDK..."
           npm install @supabase/supabase-js --save
 
