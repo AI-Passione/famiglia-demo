@@ -27,8 +27,9 @@ export const apiService = {
       if (error) throw error;
       return data as FamigliaAgent[];
     }
-    const res = await fetch(`${API_BASE}/agents`);
-    return res.json();
+    // Fallback: Return empty list if no Supabase (avoids crashing UI)
+    console.warn('Supabase not configured, returning empty agents list');
+    return [];
   },
 
   // --- Tasks ---
@@ -42,8 +43,7 @@ export const apiService = {
       if (error) throw error;
       return { tasks: data as Task[], total: count || 0 };
     }
-    const res = await fetch(`${API_BASE}/tasks?limit=${limit}`);
-    return res.json();
+    return { tasks: [], total: 0 };
   },
 
   async createTask(task: Partial<Task>): Promise<Task> {
@@ -56,12 +56,7 @@ export const apiService = {
       if (error) throw error;
       return data as Task;
     }
-    const res = await fetch(`${API_BASE}/tasks`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(task),
-    });
-    return res.json();
+    throw new Error('Supabase not configured for persistence');
   },
 
   // --- Actions (Tool Ledger) ---
@@ -75,8 +70,7 @@ export const apiService = {
       if (error) throw error;
       return { actions: data as ActionLog[], total: count || 0 };
     }
-    const res = await fetch(`${API_BASE}/actions?limit=${limit}`);
-    return res.json();
+    return { actions: [], total: 0 };
   },
 
   // --- Settings ---
@@ -97,8 +91,8 @@ export const apiService = {
         systemPrompt: data.system_prompt,
       } as AppSettings;
     }
-    const res = await fetch(`${API_BASE}/settings`);
-    return res.json();
+    // Return empty settings object as fallback
+    return {} as AppSettings;
   },
 
   async updateSettings(settings: AppSettings): Promise<void> {
@@ -118,11 +112,7 @@ export const apiService = {
       if (error) throw error;
       return;
     }
-    await fetch(`${API_BASE}/settings`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(settings),
-    });
+    console.error('Settings update failed: Supabase not configured');
   },
 
   // --- Conversations ---
@@ -135,8 +125,7 @@ export const apiService = {
       if (error) throw error;
       return data as ConversationLog[];
     }
-    const res = await fetch(`${API_BASE}/chat/conversations`);
-    return res.json();
+    return [];
   },
 
   // --- Mission Logs ---
@@ -149,7 +138,6 @@ export const apiService = {
       if (error) throw error;
       return data as MissionLogEntry[];
     }
-    const res = await fetch(`${API_BASE}/operations/mission-logs/all`);
-    return res.json();
+    return [];
   }
 };
