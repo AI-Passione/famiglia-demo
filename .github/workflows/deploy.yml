@@ -45,25 +45,24 @@ jobs:
 
       - name: Decode and prepare SSH key
         run: |
+          KEY_FILE="${GITHUB_WORKSPACE}/.github/.deploy_key"
+          mkdir -p "$(dirname "$KEY_FILE")"
+          
           if [ -n "$SSH_PRIVATE_KEY_BASE64" ]; then
-            SSH_KEY_DECODED="$(printf '%s' "$SSH_PRIVATE_KEY_BASE64" | tr -d '\r\n\t ' | base64 --decode)"
+            printf '%s' "$SSH_PRIVATE_KEY_BASE64" | tr -d '\r\n\t ' | base64 --decode > "$KEY_FILE"
           elif [ -n "$SSH_PRIVATE_KEY" ]; then
-            SSH_KEY_DECODED="$(printf '%b' "$SSH_PRIVATE_KEY" | tr -d '\r')"
+            printf '%b' "$SSH_PRIVATE_KEY" | tr -d '\r' > "$KEY_FILE"
           fi
           
-          # Use heredoc to properly handle multiline key
-          {
-            echo "SSH_KEY<<SSHEOF"
-            echo "$SSH_KEY_DECODED"
-            echo "SSHEOF"
-          } >> "$GITHUB_ENV"
+          chmod 600 "$KEY_FILE"
+          echo "SSH_KEY_FILE=${GITHUB_WORKSPACE}/.github/.deploy_key" >> "$GITHUB_ENV"
 
       - name: Deploy stack on Hetzner
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ env.SSH_HOST }}
           username: ${{ env.SSH_USER }}
-          key: ${{ env.SSH_KEY }}
+          key_path: ${{ env.SSH_KEY_FILE }}
           passphrase: ${{ env.SSH_PASSPHRASE }}
           port: ${{ env.SSH_PORT || '22' }}
           script: |
