@@ -55,7 +55,7 @@ jobs:
           fi
           
           chmod 600 "$KEY_FILE"
-          echo "SSH_KEY_FILE=$KEY_FILE" >> "$GITHUB_ENV"
+          echo "SSH_KEY_FILE=/github/runner_temp/.ssh/deploy_key" >> "$GITHUB_ENV"
 
       - name: Deploy stack on Hetzner
         uses: appleboy/ssh-action@v1.0.3
