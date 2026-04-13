@@ -43,25 +43,26 @@ jobs:
             exit 1
           }
 
-      - name: Decode SSH key
+      - name: Prepare SSH key file
         run: |
+          mkdir -p ~/.ssh
+          KEY_FILE="$HOME/.ssh/deploy_key"
+          
           if [ -n "$SSH_PRIVATE_KEY_BASE64" ]; then
-            SSH_KEY="$(printf '%s' "$SSH_PRIVATE_KEY_BASE64" | tr -d '\r\n\t ' | base64 --decode)"
-            echo "SSH_KEY<<EOF" >> "$GITHUB_ENV"
-            echo "$SSH_KEY" >> "$GITHUB_ENV"
-            echo "EOF" >> "$GITHUB_ENV"
+            printf '%s' "$SSH_PRIVATE_KEY_BASE64" | tr -d '\r\n\t ' | base64 --decode > "$KEY_FILE"
           elif [ -n "$SSH_PRIVATE_KEY" ]; then
-            echo "SSH_KEY<<EOF" >> "$GITHUB_ENV"
-            printf '%b' "$SSH_PRIVATE_KEY" | tr -d '\r' >> "$GITHUB_ENV"
-            echo "EOF" >> "$GITHUB_ENV"
+            printf '%b' "$SSH_PRIVATE_KEY" | tr -d '\r' > "$KEY_FILE"
           fi
+          
+          chmod 600 "$KEY_FILE"
+          echo "SSH_KEY_FILE=$KEY_FILE" >> "$GITHUB_ENV"
 
       - name: Deploy stack on Hetzner
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ env.SSH_HOST }}
           username: ${{ env.SSH_USER }}
-          key: ${{ env.SSH_KEY }}
+          key_path: ${{ env.SSH_KEY_FILE }}
           passphrase: ${{ env.SSH_PASSPHRASE }}
           port: ${{ env.SSH_PORT || '22' }}
           script: |
@@ -71,7 +72,6 @@ jobs:
             DEPLOY_BRANCH=main
             DEMO_REPO=git@github.com:${{ github.repository }}.git
             CORE_REPO=git@github.com:AI-Passione/famiglia-core.git
-            APP_REPO=git@github.com:davnnis2003/la-passione.git
 
             ensure_repo() {
               REPO_URL="$1"
@@ -104,11 +104,9 @@ jobs:
 
             ensure_repo "$DEMO_REPO" famiglia-demo
             ensure_repo "$CORE_REPO" famiglia-core
-            ensure_repo "$APP_REPO" la-passione
 
             sync_repo famiglia-demo
             sync_repo famiglia-core
-            sync_repo la-passione
 
             cd "$STACK_ROOT/famiglia-demo"
 
