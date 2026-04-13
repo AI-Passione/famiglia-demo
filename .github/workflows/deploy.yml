@@ -23,6 +23,7 @@ jobs:
     name: Build & Deploy to GH Pages
     needs: verify
     runs-on: ubuntu-latest
+    container: node:20
     steps:
       - name: Checkout Demo Repo
         uses: actions/checkout@v4
