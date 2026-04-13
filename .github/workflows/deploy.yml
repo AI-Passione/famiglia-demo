@@ -1,81 +1,86 @@
-name: Deploy (Release Pipeline)
+name: Deploy to Hetzner
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
 concurrency:
-  group: "pages"
+  group: hetzner-deploy
   cancel-in-progress: false
 
 jobs:
   verify:
-    name: Run Safety Checks
+    name: Validate Deployment Config
     uses: ./.github/workflows/verify.yml
 
-  build_and_deploy:
-    name: Build & Deploy to GH Pages
+  deploy:
+    name: Deploy over SSH
     needs: verify
     runs-on: ubuntu-latest
-    container: node:20
+
     steps:
-      - name: Checkout Demo Repo
-        uses: actions/checkout@v4
-
-      - name: Checkout Core Repo
-        uses: actions/checkout@v4
+      - name: Deploy stack on Hetzner
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          repository: AI-Passione/famiglia-core
-          path: famiglia-core
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || '22' }}
+          script: |
+            set -eu
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: famiglia-core/src/famiglia_core/command_center/frontend/package-lock.json
+            STACK_ROOT=/opt/famiglia
+            DEPLOY_BRANCH=main
+            DEMO_REPO=git@github.com:${{ github.repository }}.git
+            CORE_REPO=git@github.com:AI-Passione/famiglia-core.git
+            APP_REPO=git@github.com:davnnis2003/la-passione.git
 
-      - name: Inject Supabase Support
-        run: |
-          cd famiglia-core/src/famiglia_core/command_center/frontend
-          echo "Applying Supabase Patch..."
-          patch -p1 < ../../../../../supabase/supabase.patch
-          
-          echo "Copying Overlay Source files..."
-          cp ../../../../../supabase/*.ts ./src/
-          
-          echo "Installing Dependencies..."
-          npm install
+            ensure_repo() {
+              REPO_URL="$1"
+              REPO_DIR="$2"
 
-      - name: Build Frontend
-        run: |
-          cd famiglia-core/src/famiglia_core/command_center/frontend
-          
-          echo "Creating Production Environment..."
-          cat <<EOF > .env.production
-          VITE_BASE_PATH=/${{ github.event.repository.name }}/
-          VITE_SUPABASE_URL=${{ secrets.SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
-          EOF
-          
-          echo "Building with Base Path: /${{ github.event.repository.name }}/"
-          npm run build -- --base=/${{ github.event.repository.name }}/
+              if [ ! -d "$REPO_DIR/.git" ]; then
+                git clone "$REPO_URL" "$REPO_DIR"
+              fi
+            }
 
+            sync_repo() {
+              REPO_DIR="$1"
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
+              cd "$REPO_DIR"
+              git fetch origin "$DEPLOY_BRANCH"
+              git checkout "$DEPLOY_BRANCH" || git checkout -b "$DEPLOY_BRANCH" "origin/$DEPLOY_BRANCH"
+              git pull --ff-only origin "$DEPLOY_BRANCH"
+              cd "$STACK_ROOT"
+            }
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: 'famiglia-core/src/famiglia_core/command_center/frontend/dist'
+            sudo mkdir -p "$STACK_ROOT"
+            sudo chown -R "$(id -un):$(id -gn)" "$STACK_ROOT"
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+            mkdir -p ~/.ssh
+            chmod 700 ~/.ssh
+            ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+            chmod 600 ~/.ssh/known_hosts
+
+            cd "$STACK_ROOT"
+
+            ensure_repo "$DEMO_REPO" famiglia-demo
+            ensure_repo "$CORE_REPO" famiglia-core
+            ensure_repo "$APP_REPO" la-passione
+
+            sync_repo famiglia-demo
+            sync_repo famiglia-core
+            sync_repo la-passione
+
+            cd "$STACK_ROOT/famiglia-demo"
+
+            if [ ! -f .env ]; then
+              echo "Missing $STACK_ROOT/famiglia-demo/.env on the Hetzner host."
+              exit 1
+            fi
+
+            docker compose pull || true
+            docker compose up -d --build --remove-orphans
+            docker compose ps

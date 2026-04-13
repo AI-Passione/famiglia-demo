@@ -1,57 +1,44 @@
-# 💎 AI Passione: The Demo Showcase
+# Famiglia Demo
 
-Welcome to the official demo repository of **La Passione Inc.** This is where we showcase the elite, autonomous power of the Famiglia in a premium web environment.
+This repository is the deployment and orchestration layer for the Famiglia demo stack. It keeps the Docker Compose setup, CI checks, and Hetzner deployment workflow that tie together:
 
----
+- [`famiglia-demo`](https://github.com/AI-Passione/famiglia-demo)
+- [`famiglia-core`](https://github.com/AI-Passione/famiglia-core)
+- [`la-passione`](https://github.com/davnnis2003/la-passione)
 
-## 🌊 The Vibe
-This isn't just a repo; it's a performance. We prioritize:
-- **Premium Aesthetics**: Glassmorphism, smooth gradients, and elite typography.
-- **Autonomous Intelligence**: Designed for AI agents to build, maintain, and scale with minimal human overhead.
-- **Milano Flair**: High-fashion tech, sharp interactions, and a "WOW" factor in every component.
+## Architecture
 
-## 🏛 Architecture
-- **Frontend**: A high-performance showcase built for visual impact.
-- **Backend**: Powered by **Supabase** for real-time agility and reliable persistence.
-- **Core Link**: For the heavy lifting and business logic, we refer to the [famiglia-core](https://github.com/AI-Passione/famiglia-core) ecosystem.
+- `docker-compose.yml` runs the app, frontend, Postgres, Redis, and Ollama as one stack.
+- `famiglia-core` provides the frontend source and database schema mounted by the stack.
+- `la-passione` provides the backend build context used by the `app` service.
+- Deployment happens through GitHub Actions over SSH to a Hetzner host.
 
-## 🤖 AI Interaction
-If you are an AI agent working in this repo:
-1. Read the **[AI_MANIFESTO.md](AI_MANIFESTO.md)**.
-2. Follow the model-specific instructions in **[GEMINI.md](GEMINI.md)** (for Gemini) or the **[.cursorrules](.cursorrules)** (for Cursor).
-3. Always verify your UI changes visually. "Good enough" is not an option for **Don Jimmy**.
+## Local Setup
 
----
+1. Clone this repo alongside `famiglia-core` and `la-passione` so the three folders share the same parent directory.
+2. Copy `.env.example` to `.env` and fill in the required secrets.
+3. Start the stack with `make up`.
+4. Check logs with `make logs`.
 
-## 🚀 Getting Started
-1. **Clone** the repo.
-2. **Install** dependencies: `npm install`.
-3. **Configure** your `.env` with Supabase credentials.
-4. **Run** the demo: `npm run dev`.
+## Hetzner Deployment
 
----
+The deploy workflow in [`.github/workflows/deploy.yml`](/Users/jimmypang/AIPassioneProjects/famiglia-demo/.github/workflows/deploy.yml) connects to your Hetzner box over SSH and updates all three sibling repositories before running `docker compose up -d --build`.
 
-## 🐳 Docker Quickstart (Full Stack)
-Run the entire Famiglia ecosystem locally using production images from GHCR.
+Configure these GitHub Actions secrets:
 
-1. **Prerequisites**: Ensure you have [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) installed.
-2. **Setup**: Copy `.env.example` to `.env` and configure your API keys.
-3. **Fetch Images**: 
-   ```bash
-   make pull
-   ```
-4. **Launch**:
-   ```bash
-   make up
-   ```
-5. **Monitor**:
-   ```bash
-   make logs
-   ```
+- `SSH_HOST`
+- `SSH_USER`
+- `SSH_PRIVATE_KEY`
+- `SSH_PORT` (optional, defaults to `22`)
 
-> [!NOTE]
-> This stack uses local Postgres and Redis instances. Ensure your `.env` is properly configured to point to these services within the Docker network.
+The target server also needs:
 
----
+- Docker with the Compose plugin installed
+- a checked-out stack root at `/opt/famiglia` or permission for the workflow to create it
+- GitHub SSH access on the server for the three repositories
+- a populated `/opt/famiglia/famiglia-demo/.env`
 
-*Keep the vibes high. Welcome to the Family.*
+## CI
+
+- `.github/workflows/verify.yml` checks that the three-repo layout resolves correctly and that `docker compose config` succeeds.
+- `.github/workflows/test.yml` runs the same verification on non-`main` pushes.
