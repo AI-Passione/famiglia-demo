@@ -54,7 +54,8 @@ jobs:
             printf '%b' "$SSH_PRIVATE_KEY" | tr -d '\r' > "$KEY_FILE"
           fi
           
-          chmod 600 "$KEY_FILE"
+          # Make readable by all (including Docker container)
+          chmod 644 "$KEY_FILE"
           echo "SSH_KEY_FILE=${GITHUB_WORKSPACE}/.github/.deploy_key" >> "$GITHUB_ENV"
 
       - name: Deploy stack on Hetzner
