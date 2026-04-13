@@ -19,12 +19,6 @@ jobs:
           repository: AI-Passione/famiglia-core
           path: famiglia-core
 
-      - name: Checkout App Repo
-        uses: actions/checkout@v4
-        with:
-          repository: davnnis2003/la-passione
-          path: la-passione
-
       - name: Prepare Environment
         run: |
           cp famiglia-demo/.env.example famiglia-demo/.env
