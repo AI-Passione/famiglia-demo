@@ -50,24 +50,8 @@ jobs:
           echo "Copying Overlay Source files..."
           cp ../../../../../supabase/*.ts ./src/
           
-          echo "Installing Dependencies (including Supabase)..."
+          echo "Installing Dependencies..."
           npm install
-          npm install @supabase/supabase-js
-
-      - name: Cleanup Unused Declarations
-        run: |
-          cd famiglia-core/src/famiglia_core/command_center/frontend
-          echo "Cleaning up unused code to satisfy TS strictness..."
-          # Prefix unused setters/state in App.tsx with underscores (satisfies TS without breaking references)
-          sed -i 's/selectedGraph,/_selectedGraph,/g' src/App.tsx
-          sed -i 's/setRecurringTasks/_setRecurringTasks/g' src/App.tsx
-          sed -i 's/setGraphs/_setGraphs/g' src/App.tsx
-          sed -i 's/setSelectedGraph/_setSelectedGraph/g' src/App.tsx
-          # Remove unused actions state and its fetcher from Operations.tsx
-          sed -i '/const \[actions, setActions\]/d' src/modules/Operations.tsx
-          sed -i 's/actionsData, //' src/modules/Operations.tsx
-          sed -i 's/apiService.getActions(50), //' src/modules/Operations.tsx
-          sed -i '/setActions(actionsData.actions)/d' src/modules/Operations.tsx
 
       - name: Build Frontend
         run: |

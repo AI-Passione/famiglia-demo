@@ -27,9 +27,12 @@ export const apiService = {
       if (error) throw error;
       return data as FamigliaAgent[];
     }
-    // Fallback: Return empty list if no Supabase (avoids crashing UI)
-    console.warn('Supabase not configured, returning empty agents list');
-    return [];
+    const response = await fetch(`${API_BASE}/agents`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch agents: ${response.status}`);
+    }
+    const data = await response.json();
+    return Array.isArray(data) ? (data as FamigliaAgent[]) : [];
   },
 
   // --- Tasks ---
@@ -43,7 +46,11 @@ export const apiService = {
       if (error) throw error;
       return { tasks: data as Task[], total: count || 0 };
     }
-    return { tasks: [], total: 0 };
+    const response = await fetch(`${API_BASE}/tasks?limit=${limit}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch tasks: ${response.status}`);
+    }
+    return (await response.json()) as PaginatedTasks;
   },
 
   async createTask(task: Partial<Task>): Promise<Task> {
@@ -70,7 +77,11 @@ export const apiService = {
       if (error) throw error;
       return { actions: data as ActionLog[], total: count || 0 };
     }
-    return { actions: [], total: 0 };
+    const response = await fetch(`${API_BASE}/actions?limit=${limit}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch actions: ${response.status}`);
+    }
+    return (await response.json()) as PaginatedActions;
   },
 
   // --- Settings ---
@@ -91,8 +102,11 @@ export const apiService = {
         systemPrompt: data.system_prompt,
       } as AppSettings;
     }
-    // Return empty settings object as fallback
-    return {} as AppSettings;
+    const response = await fetch(`${API_BASE}/settings`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch settings: ${response.status}`);
+    }
+    return (await response.json()) as AppSettings;
   },
 
   async updateSettings(settings: AppSettings): Promise<void> {
@@ -112,7 +126,14 @@ export const apiService = {
       if (error) throw error;
       return;
     }
-    console.error('Settings update failed: Supabase not configured');
+    const response = await fetch(`${API_BASE}/settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to update settings: ${response.status}`);
+    }
   },
 
   // --- Conversations ---
@@ -125,7 +146,11 @@ export const apiService = {
       if (error) throw error;
       return data as ConversationLog[];
     }
-    return [];
+    const response = await fetch(`${API_BASE}/chat/conversations`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch conversations: ${response.status}`);
+    }
+    return (await response.json()) as ConversationLog[];
   },
 
   // --- Mission Logs ---
@@ -138,6 +163,10 @@ export const apiService = {
       if (error) throw error;
       return data as MissionLogEntry[];
     }
-    return [];
+    const response = await fetch(`${API_BASE}/operations/mission-logs/all`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch mission logs: ${response.status}`);
+    }
+    return (await response.json()) as MissionLogEntry[];
   }
 };
