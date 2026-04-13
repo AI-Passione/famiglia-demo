@@ -20,7 +20,7 @@ This repository follows the **[AI_MANIFESTO.md](AI_MANIFESTO.md)**. Read it now.
 
 - **Deployment**: This repo deploys the stack to Hetzner over SSH.
 - **Stack**: The runtime is centered on Docker Compose, not direct hosted database integrations in this repo.
-- **Minimization**: Do not re-implement complex business logic here. Reference `famiglia-core` and `la-passione` while keeping this repo focused on the showcase and deployment experience.
+- **Minimization**: Do not re-implement complex business logic here. Leverage `famiglia-core` for the engine while keeping this repo focused on the showcase and deployment experience.
 
 ## Proactive Engagement
 

@@ -31,7 +31,7 @@ Every contribution must adhere to these golden rules:
 - **The Showcase**: This repo focuses on orchestration, deployment, and demo-specific presentation.
 - **Runtime Stack**: The demo runs as a Docker Compose stack with the app, frontend, Postgres, Redis, and Ollama services.
 - **Deployment Target**: Production deploys go to a Hetzner host over SSH.
-- **Integration**: Detailed business logic remains in `famiglia-core`, while backend app code comes from `la-passione`.
+- **Integration**: Detailed business logic and backend engine are provided by `famiglia-core`.
 
 ## Operational Protocols
 
