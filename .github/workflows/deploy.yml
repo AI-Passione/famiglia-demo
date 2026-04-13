@@ -36,6 +36,16 @@ jobs:
           cache: 'npm'
           cache-dependency-path: famiglia-core/src/famiglia_core/command_center/frontend/package-lock.json
 
+      - name: Inject Supabase Support
+        run: |
+          cd famiglia-core/src/famiglia_core/command_center/frontend
+          echo "Applying Supabase Patch..."
+          patch -p1 < ../../../../../../supabase.patch
+          echo "Copying Overlay Files..."
+          cp ../../../../../../command_center_overlay/*.ts ./src/
+          echo "Installing Supabase SDK..."
+          npm install @supabase/supabase-js --save
+
       - name: Install Dependencies
         run: |
           cd famiglia-core/src/famiglia_core/command_center/frontend

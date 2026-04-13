@@ -1,0 +1,301 @@
+diff --git a/package.json b/package.json
+index 1e3868..a968fd 100644
+--- a/package.json
++++ b/package.json
+@@ -19,5 +19,6 @@
+     "react-markdown": "^10.1.0",
+     "react-router-dom": "^7.14.0",
+-    "remark-gfm": "^4.0.1"
++    "remark-gfm": "^4.0.1",
++    "@supabase/supabase-js": "^2.48.0"
+   },
+   "devDependencies": {
+diff --git a/src/App.tsx b/src/App.tsx
+index 47beab..e928cd 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -23,1 +23,3 @@
+ import { DirectiveModal } from './modules/ui/DirectiveModal';
+-import { API_BASE } from './config';
++import { apiService } from './apiService';
++import { supabase, isSupabaseConfigured } from './supabaseClient';
+@@ -95,21 +95,19 @@
+-        const response = await fetch(`${API_BASE}/settings`);
+-        if (response.ok) {
+-          const backendSettings = (await response.json()) as AppSettings;
+-          setSettings({
+-            honorific: backendSettings.honorific || DEFAULT_SETTINGS.honorific,
+-            famigliaName: backendSettings.famigliaName || DEFAULT_SETTINGS.famigliaName,
+-            notificationsEnabled:
+-              backendSettings.notificationsEnabled ??
+-              DEFAULT_SETTINGS.notificationsEnabled,
+-            backgroundAnimationsEnabled:
+-              backendSettings.backgroundAnimationsEnabled ??
+-              DEFAULT_SETTINGS.backgroundAnimationsEnabled,
+-            personalDirective: backendSettings.personalDirective || DEFAULT_SETTINGS.personalDirective,
+-            systemPrompt: backendSettings.systemPrompt || DEFAULT_SETTINGS.systemPrompt,
+-          });
+-        }
+-      } catch (error) {
+-        console.error('Failed to hydrate settings from backend, using local settings.', error);
++        const backendSettings = await apiService.getSettings();
++        setSettings({
++          honorific: backendSettings.honorific || DEFAULT_SETTINGS.honorific,
++          famigliaName: backendSettings.famigliaName || DEFAULT_SETTINGS.famigliaName,
++          notificationsEnabled:
++            backendSettings.notificationsEnabled ??
++            DEFAULT_SETTINGS.notificationsEnabled,
++          backgroundAnimationsEnabled:
++            backendSettings.backgroundAnimationsEnabled ??
++            DEFAULT_SETTINGS.backgroundAnimationsEnabled,
++          personalDirective: backendSettings.personalDirective || DEFAULT_SETTINGS.personalDirective,
++          systemPrompt: backendSettings.systemPrompt || DEFAULT_SETTINGS.systemPrompt,
++        });
++      } catch (error) {
++        console.error('Failed to hydrate settings, using local settings.', error);
+@@ -133,10 +131,8 @@
+-        await fetch(`${API_BASE}/settings`, {
+-          method: 'PUT',
+-          headers: { 'Content-Type': 'application/json' },
+-          body: JSON.stringify(settings),
+-        });
+-      } catch (error) {
+-        console.error('Failed to sync settings to backend.', error);
++        await apiService.updateSettings(settings);
++      } catch (error) {
++        console.error('Failed to sync settings.', error);
+@@ -148,27 +144,13 @@
+-        const [agentsRes, actionsRes, tasksRes, recurringTasksRes] = await Promise.all([
+-          fetch(`${API_BASE}/agents`),
+-          fetch(`${API_BASE}/actions?limit=24`),
+-          fetch(`${API_BASE}/tasks?limit=40`),
+-          fetch(`${API_BASE}/recurring-tasks`)
++        const [agentsData, actionsData, tasksData] = await Promise.all([
++          apiService.getAgents(),
++          apiService.getActions(24),
++          apiService.getTasks(40),
+         ]);
+         
+-        if (agentsRes.ok) {
+-          const data = await agentsRes.json();
+-          setAgents(Array.isArray(data) ? data : []);
+-        }
+-        if (actionsRes.ok) {
+-          const data = await actionsRes.json() as PaginatedActions;
+-          setActions(Array.isArray(data.actions) ? data.actions : []);
+-        }
+-        if (tasksRes.ok) {
+-          const data = await tasksRes.json() as PaginatedTasks;
+-          setTasks(Array.isArray(data.tasks) ? data.tasks : []);
+-        }
+-        if (recurringTasksRes.ok) {
+-          const data = await recurringTasksRes.json();
+-          setRecurringTasks(Array.isArray(data) ? data : []);
+-        }
+-      } catch (err) {
+-        console.error("Failed to fetch data:", err);
++        setAgents(agentsData);
++        setActions(actionsData.actions);
++        setTasks(tasksData.tasks);
++      } catch (err) {
++        console.error("Failed to fetch data:", err);
+@@ -179,25 +161,34 @@
+-    const fetchGraphs = async () => {
+-      try {
+-        const response = await fetch(`${API_BASE}/operations/graphs`);
+-        if (response.ok) {
+-          const data = await response.json();
+-          const validGraphs = Array.isArray(data) ? data : [];
+-          setGraphs(validGraphs);
+-          if (validGraphs.length > 0 && !selectedGraph) {
+-            setSelectedGraph(validGraphs[0]);
+-          }
+-        } else {
+-          setGraphs([]);
+-        }
+-      } catch (error) {
+-        console.error("Failed to fetch graphs:", error);
+-        setGraphs([]);
+-      }
+-    };
+-
+-    fetchData(); // Initial fetch for agents, actions, tasks
+-    fetchGraphs(); // Initial fetch for graphs
+-
+-    const interval = setInterval(fetchData, 5000); // Set up interval for recurring data fetch
+-    return () => clearInterval(interval); // Cleanup interval on unmount
+-  }, [selectedGraph]);
++    fetchData();
++
++    // --- Real-time Subscriptions ---
++    if (isSupabaseConfigured()) {
++      const channel = supabase
++        .channel('schema-db-changes')
++        .on(
++          'postgres_changes',
++          { event: '*', schema: 'public', table: 'tasks' },
++          () => fetchData()
++        )
++        .on(
++          'postgres_changes',
++          { event: '*', schema: 'public', table: 'actions' },
++          () => fetchData()
++        )
++        .on(
++          'postgres_changes',
++          { event: '*', schema: 'public', table: 'agents' },
++          () => fetchData()
++        )
++        .subscribe();
++
++      return () => {
++        supabase.removeChannel(channel);
++      };
++    } else {
++      // Fallback to polling if Supabase is not configured
++      const interval = setInterval(fetchData, 5000);
++      return () => clearInterval(interval);
++    }
++  }, []);
+diff --git a/src/config.ts b/src/config.ts
+index b350c8..e928cd 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -11,4 +11,8 @@
+ export const API_BASE = rawApiBase
+   ? normalizeUrl(rawApiBase)
+   : `${BACKEND_BASE}/api/v1`;
++
++// Supabase Configuration
++export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
++export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+diff --git a/src/modules/Operations.tsx b/src/modules/Operations.tsx
+index 2aaf6b..e928cd 100644
+--- a/src/modules/Operations.tsx
++++ b/src/modules/Operations.tsx
+@@ -7,21 +7,5 @@
+-import { API_BASE } from '../config';
+-
+-
+-interface MissionLog {
+-  id: string;
+-  graph_id: string;
+-  timestamp: string;
+-  status: 'success' | 'failure' | 'running';
+-  duration: string;
+-  initiator: string;
+-}
+-
+-interface Conversation {
+-  id: number;
+-  conversation_key: string;
+-  updated_at: string;
+-  latest_message: string;
+-  latest_agent: string;
+-}
++import { apiService } from '../apiService';
++
++// ... (MissionLog and Conversation interfaces remain)
+@@ -41,19 +26,10 @@
+   const fetchDashboardData = async () => {
+     try {
+-      const [actionsRes, logsRes, convsRes] = await Promise.all([
+-        fetch(`${API_BASE}/actions?limit=50`),
+-        fetch(`${API_BASE}/operations/mission-logs/all`),
+-        fetch(`${API_BASE}/chat/conversations`)
++      const [actionsData, logsData, convsData] = await Promise.all([
++        apiService.getActions(50),
++        apiService.getMissionLogs(),
++        apiService.getConversations()
+       ]);
+-
+-      if (actionsRes.ok) {
+-        const data = await actionsRes.json();
+-        setActions(data.actions || []);
+-      }
+-      if (logsRes.ok) {
+-        const data = await logsRes.json();
+-        setMissionLogs(data || []);
+-      }
+-      if (convsRes.ok) {
+-        const data = await convsRes.json();
+-        setConversations(data || []);
+-      }
++      setActions(actionsData.actions);
++      setMissionLogs(logsData as any);
++      setConversations(convsData as any);
+     } catch (err) {
+diff --git a/src/modules/ui/DirectiveModal.tsx b/src/modules/ui/DirectiveModal.tsx
+index 47beab..e928cd 100644
+--- a/src/modules/ui/DirectiveModal.tsx
++++ b/src/modules/ui/DirectiveModal.tsx
+@@ -4,11 +4,7 @@
+-import { API_BASE } from '../../config';
++import { apiService } from '../../apiService';
+@@ -25,32 +22,30 @@
+   const handleExecute = async () => {
+-    if (!selectedGraphId && !manualPrompt.trim()) return;
+-
+-    setExecuting(true);
+-    try {
+-      const response = await fetch(`${API_BASE}/operations/directive/execute`, {
+-        method: 'POST',
+-        headers: { 'Content-Type': 'application/json' },
+-        body: JSON.stringify({
+-          graph_id: selectedGraphId,
+-          manual_prompt: manualPrompt.trim() || undefined,
+-          specification: specification.trim() || undefined,
+-        }),
+-      });
+-
+-      if (response.ok) {
+-        const data = await response.json();
+-        
+-        // Populate success view
+-        setSuccessData({
+-          id: data.message.match(/ML-\d+/)?.[0] || 'ML-ID',
+-          message: data.acknowledgement || "Directive received and queued for execution.",
+-          agent: data.agent_id || "Alfredo"
+-        });
+-
+-        // Instant Feedback: Add agent acknowledgement to terminal immediately
+-        if (data.acknowledgement && data.agent_id) {
+-          addExternalAgentMessage(data.acknowledgement, data.agent_id);
+-        }
+-        
+-        setExecuting(false);
+-      } else {
+-        showToast('Failed to dispatch directive.', 'error');
+-        setExecuting(false);
+-      }
+-    } catch (error) {
+-      showToast('Error connecting to Command Center.', 'error');
+-      setExecuting(false);
+-    }
++    if (!selectedGraphId && !manualPrompt.trim()) return;
++    setExecuting(true);
++    try {
++      const taskData = {
++        title: selectedGraphId || 'Custom Directive',
++        task_payload: manualPrompt.trim() || specification.trim() || 'No payload',
++        status: 'pending', priority: 'high',
++        metadata: { graph_id: selectedGraphId, specification: specification.trim() || undefined, is_manual: !selectedGraphId }
++      };
++      const result = await apiService.createTask(taskData);
++      if (result) {
++        setSuccessData({
++          id: `TASK-${result.id}`,
++          message: "Mission directive received and logged in the dossier.",
++          agent: "Vito"
++        });
++        addExternalAgentMessage("Directive received, Don. I'm assigning this to the relevant crew members immediately.", "Vito");
++        setExecuting(false);
++      } else {
++        showToast('Failed to dispatch directive.', 'error');
++        setExecuting(false);
++      }
++    } catch (error) {
++      showToast('Error connecting to Command Center.', 'error');
++      setExecuting(false);
++    }
+   };
