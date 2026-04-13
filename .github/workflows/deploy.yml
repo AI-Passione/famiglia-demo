@@ -51,7 +51,20 @@ jobs:
           if [ -n "$SSH_PRIVATE_KEY_BASE64" ]; then
             printf '%s' "$SSH_PRIVATE_KEY_BASE64" | base64 --decode > "$KEY_FILE"
           else
-            printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > "$KEY_FILE"
+            NORMALIZED_KEY="$SSH_PRIVATE_KEY"
+
+            case "$NORMALIZED_KEY" in
+              \"*\")
+                NORMALIZED_KEY="${NORMALIZED_KEY#\"}"
+                NORMALIZED_KEY="${NORMALIZED_KEY%\"}"
+                ;;
+            esac
+
+            if printf '%s' "$NORMALIZED_KEY" | grep -q '\\n'; then
+              printf '%b' "$NORMALIZED_KEY" | tr -d '\r' > "$KEY_FILE"
+            else
+              printf '%s\n' "$NORMALIZED_KEY" | tr -d '\r' > "$KEY_FILE"
+            fi
           fi
 
           chmod 600 "$KEY_FILE"
