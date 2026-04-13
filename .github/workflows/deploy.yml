@@ -36,12 +36,51 @@ jobs:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+      OLLAMA_HOST: ${{ secrets.OLLAMA_HOST || 'http://ollama:11434' }}
+      OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+      OLLAMA_FALLBACK_MODEL: ${{ secrets.OLLAMA_FALLBACK_MODEL }}
+      
+      # Slack Configuration
       SLACK_APP_TOKEN: ${{ secrets.SLACK_APP_TOKEN }}
       SLACK_BOT_TOKEN_SYSTEM: ${{ secrets.SLACK_BOT_TOKEN_SYSTEM }}
-      OLLAMA_HOST: ${{ secrets.OLLAMA_HOST || 'http://ollama:11434' }}
+      USER_SLACK_ID: ${{ secrets.USER_SLACK_ID }}
+      DEV_CHANNEL_ID: ${{ secrets.DEV_CHANNEL_ID }}
+
+      # Agent Tokens - Alfredo
+      SLACK_BOT_TOKEN_ALFREDO: ${{ secrets.SLACK_BOT_TOKEN_ALFREDO }}
+      SLACK_APP_TOKEN_ALFREDO: ${{ secrets.SLACK_APP_TOKEN_ALFREDO }}
+
+      # Agent Tokens - Vito
+      SLACK_BOT_TOKEN_VITO: ${{ secrets.SLACK_BOT_TOKEN_VITO }}
+      SLACK_APP_TOKEN_VITO: ${{ secrets.SLACK_APP_TOKEN_VITO }}
+
+      # Agent Tokens - Riccardo
+      SLACK_BOT_TOKEN_RICCARDO: ${{ secrets.SLACK_BOT_TOKEN_RICCARDO }}
+      SLACK_APP_TOKEN_RICCARDO: ${{ secrets.SLACK_APP_TOKEN_RICCARDO }}
       GITHUB_APP_ID_RICCARDO: ${{ secrets.GITHUB_APP_ID_RICCARDO }}
+      GITHUB_APP_INSTALLATION_ID_RICCARDO: ${{ secrets.GITHUB_APP_INSTALLATION_ID_RICCARDO }}
       GITHUB_APP_PRIVATE_KEY_RICCARDO: ${{ secrets.GITHUB_APP_PRIVATE_KEY_RICCARDO }}
+
+      # Agent Tokens - Rossini
+      SLACK_BOT_TOKEN_ROSSINI: ${{ secrets.SLACK_BOT_TOKEN_ROSSINI }}
+      SLACK_APP_TOKEN_ROSSINI: ${{ secrets.SLACK_APP_TOKEN_ROSSINI }}
+      GITHUB_APP_ID_ROSSINI: ${{ secrets.GITHUB_APP_ID_ROSSINI }}
+      GITHUB_APP_INSTALLATION_ID_ROSSINI: ${{ secrets.GITHUB_APP_INSTALLATION_ID_ROSSINI }}
+      GITHUB_APP_PRIVATE_KEY_ROSSINI: ${{ secrets.GITHUB_APP_PRIVATE_KEY_ROSSINI }}
       NOTION_API_KEY_ROSSINI: ${{ secrets.NOTION_API_KEY_ROSSINI }}
+
+      # Agent Tokens - Tommy
+      SLACK_BOT_TOKEN_TOMMY: ${{ secrets.SLACK_BOT_TOKEN_TOMMY }}
+      SLACK_APP_TOKEN_TOMMY: ${{ secrets.SLACK_APP_TOKEN_TOMMY }}
+
+      # Agent Tokens - Bella
+      SLACK_BOT_TOKEN_BELLA: ${{ secrets.SLACK_BOT_TOKEN_BELLA }}
+      SLACK_APP_TOKEN_BELLA: ${{ secrets.SLACK_APP_TOKEN_BELLA }}
+
+      # Agent Tokens - Kowalski
+      SLACK_BOT_TOKEN_KOWALSKI: ${{ secrets.SLACK_BOT_TOKEN_KOWALSKI }}
+      SLACK_APP_TOKEN_KOWALSKI: ${{ secrets.SLACK_APP_TOKEN_KOWALSKI }}
+      NOTION_API_KEY_KOWALSKI: ${{ secrets.NOTION_API_KEY_KOWALSKI }}
 
     steps:
       - name: Validate SSH configuration
@@ -83,7 +122,12 @@ jobs:
           key: ${{ env.DECODED_SSH_KEY }}
           passphrase: ${{ env.SSH_PASSPHRASE }}
           port: ${{ env.SSH_PORT || '22' }}
-          envs: APP_ENV,DB_USER,DB_PASSWORD,DB_NAME,GEMINI_API_KEY,ANTHROPIC_API_KEY,PERPLEXITY_API_KEY,SLACK_APP_TOKEN,SLACK_BOT_TOKEN_SYSTEM,OLLAMA_HOST,GITHUB_APP_ID_RICCARDO,GITHUB_APP_PRIVATE_KEY_RICCARDO,NOTION_API_KEY_ROSSINI
+          envs: >-
+            APP_ENV,DB_USER,DB_PASSWORD,DB_NAME,GEMINI_API_KEY,ANTHROPIC_API_KEY,PERPLEXITY_API_KEY,SLACK_APP_TOKEN,SLACK_BOT_TOKEN_SYSTEM,OLLAMA_HOST,OLLAMA_API_KEY,OLLAMA_FALLBACK_MODEL,
+            USER_SLACK_ID,DEV_CHANNEL_ID,SLACK_BOT_TOKEN_ALFREDO,SLACK_APP_TOKEN_ALFREDO,SLACK_BOT_TOKEN_VITO,SLACK_APP_TOKEN_VITO,SLACK_BOT_TOKEN_RICCARDO,SLACK_APP_TOKEN_RICCARDO,
+            GITHUB_APP_ID_RICCARDO,GITHUB_APP_INSTALLATION_ID_RICCARDO,GITHUB_APP_PRIVATE_KEY_RICCARDO,SLACK_BOT_TOKEN_ROSSINI,SLACK_APP_TOKEN_ROSSINI,GITHUB_APP_ID_ROSSINI,
+            GITHUB_APP_INSTALLATION_ID_ROSSINI,GITHUB_APP_PRIVATE_KEY_ROSSINI,NOTION_API_KEY_ROSSINI,SLACK_BOT_TOKEN_TOMMY,SLACK_APP_TOKEN_TOMMY,SLACK_BOT_TOKEN_BELLA,
+            SLACK_APP_TOKEN_BELLA,SLACK_BOT_TOKEN_KOWALSKI,SLACK_APP_TOKEN_KOWALSKI,NOTION_API_KEY_KOWALSKI
           script: |
             set -eu
 
@@ -99,6 +143,18 @@ jobs:
                 curl -fsSL https://get.docker.com | sudo sh
                 sudo usermod -aG docker "$(id -un)"
                 echo "Docker installed successfully."
+              fi
+            }
+
+            ensure_uv() {
+              if ! command -v uv &> /dev/null; then
+                echo "UV not found. Installing..."
+                curl -LsSf https://astral.sh/uv/install.sh | sh
+                # Add to path for current session if not already there
+                if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+                  export PATH="$HOME/.local/bin:$PATH"
+                fi
+                echo "UV installed successfully."
               fi
             }
 
@@ -141,14 +197,29 @@ jobs:
 
             echo "Generating .env from passed environment variables..."
             : > .env
-            for var in APP_ENV DB_USER DB_PASSWORD DB_NAME GEMINI_API_KEY ANTHROPIC_API_KEY PERPLEXITY_API_KEY SLACK_APP_TOKEN SLACK_BOT_TOKEN_SYSTEM OLLAMA_HOST GITHUB_APP_ID_RICCARDO GITHUB_APP_PRIVATE_KEY_RICCARDO NOTION_API_KEY_ROSSINI; do
+            VARS_TO_SYNC=(
+              APP_ENV DB_USER DB_PASSWORD DB_NAME GEMINI_API_KEY ANTHROPIC_API_KEY PERPLEXITY_API_KEY 
+              OLLAMA_HOST OLLAMA_API_KEY OLLAMA_FALLBACK_MODEL
+              SLACK_APP_TOKEN SLACK_BOT_TOKEN_SYSTEM USER_SLACK_ID DEV_CHANNEL_ID
+              SLACK_BOT_TOKEN_ALFREDO SLACK_APP_TOKEN_ALFREDO
+              SLACK_BOT_TOKEN_VITO SLACK_APP_TOKEN_VITO
+              SLACK_BOT_TOKEN_RICCARDO SLACK_APP_TOKEN_RICCARDO GITHUB_APP_ID_RICCARDO GITHUB_APP_INSTALLATION_ID_RICCARDO GITHUB_APP_PRIVATE_KEY_RICCARDO
+              SLACK_BOT_TOKEN_ROSSINI SLACK_APP_TOKEN_ROSSINI GITHUB_APP_ID_ROSSINI GITHUB_APP_INSTALLATION_ID_ROSSINI GITHUB_APP_PRIVATE_KEY_ROSSINI NOTION_API_KEY_ROSSINI
+              SLACK_BOT_TOKEN_TOMMY SLACK_APP_TOKEN_TOMMY
+              SLACK_BOT_TOKEN_BELLA SLACK_APP_TOKEN_BELLA
+              SLACK_BOT_TOKEN_KOWALSKI SLACK_APP_TOKEN_KOWALSKI NOTION_API_KEY_KOWALSKI
+            )
+            for var in "${VARS_TO_SYNC[@]}"; do
               eval value="\${$var:-}"
-              echo "$var=\"$value\"" >> .env
+              if [ -n "$value" ]; then
+                echo "$var=\"$value\"" >> .env
+              fi
             done
 
             chmod 600 .env
 
             ensure_docker
+            ensure_uv
 
             sudo docker compose pull || true
             sudo docker compose up -d --build --remove-orphans
