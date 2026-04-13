@@ -47,76 +47,49 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/.ssh"
           KEY_FILE="$RUNNER_TEMP/.ssh/deploy_key"
-          CANDIDATE_FILE="$RUNNER_TEMP/.ssh/deploy_key.candidate"
           VALID_KEY_REGEX='^-----BEGIN (OPENSSH|RSA|EC|DSA) PRIVATE KEY-----$'
 
-          write_raw_key() {
-            INPUT_KEY="$1"
-            NORMALIZED_KEY="$INPUT_KEY"
-
-            case "$NORMALIZED_KEY" in
-              \"*\")
-                NORMALIZED_KEY="${NORMALIZED_KEY#\"}"
-                NORMALIZED_KEY="${NORMALIZED_KEY%\"}"
-                ;;
-            esac
-
-            if printf '%s' "$NORMALIZED_KEY" | grep -q '\\n'; then
-              printf '%b' "$NORMALIZED_KEY" | tr -d '\r' > "$KEY_FILE"
-            else
-              printf '%s\n' "$NORMALIZED_KEY" | tr -d '\r' > "$KEY_FILE"
-            fi
-          }
-
+          # Try to decode from base64 first
           if [ -n "$SSH_PRIVATE_KEY_BASE64" ]; then
             CLEAN_BASE64="$(printf '%s' "$SSH_PRIVATE_KEY_BASE64" | tr -d '\r\n\t ')"
-
-            if printf '%s' "$CLEAN_BASE64" | base64 --decode > "$CANDIDATE_FILE" 2>/dev/null; then
-              mv "$CANDIDATE_FILE" "$KEY_FILE"
-            else
-              write_raw_key "$SSH_PRIVATE_KEY_BASE64"
-            fi
-          else
-            NORMALIZED_KEY="$SSH_PRIVATE_KEY"
-            write_raw_key "$NORMALIZED_KEY"
-
-            if ! grep -Eq "$VALID_KEY_REGEX" "$KEY_FILE"; then
-              if printf '%s' "$NORMALIZED_KEY" | tr -d '\r\n\t ' | base64 --decode > "$CANDIDATE_FILE" 2>/dev/null; then
-                if grep -Eq "$VALID_KEY_REGEX" "$CANDIDATE_FILE"; then
-                  mv "$CANDIDATE_FILE" "$KEY_FILE"
-                fi
+            if printf '%s' "$CLEAN_BASE64" | base64 --decode > "$KEY_FILE" 2>/dev/null; then
+              chmod 600 "$KEY_FILE"
+              if grep -Eq "$VALID_KEY_REGEX" "$KEY_FILE"; then
+                echo "SSH_KEY_PATH=$KEY_FILE" >> "$GITHUB_ENV"
+                exit 0
               fi
             fi
           fi
 
-          chmod 600 "$KEY_FILE"
-
-          if ! grep -Eq "$VALID_KEY_REGEX" "$KEY_FILE"; then
-            if grep -q 'BEGIN .* PRIVATE KEY' "$KEY_FILE"; then
-              HAS_BEGIN=yes
-            else
-              HAS_BEGIN=no
+          # Try raw key with escaped newlines (\n literal)
+          if [ -n "$SSH_PRIVATE_KEY" ]; then
+            printf '%b' "$SSH_PRIVATE_KEY" | tr -d '\r' > "$KEY_FILE" 2>/dev/null || true
+            if grep -Eq "$VALID_KEY_REGEX" "$KEY_FILE"; then
+              chmod 600 "$KEY_FILE"
+              echo "SSH_KEY_PATH=$KEY_FILE" >> "$GITHUB_ENV"
+              exit 0
             fi
-
-            if grep -q 'END .* PRIVATE KEY' "$KEY_FILE"; then
-              HAS_END=yes
-            else
-              HAS_END=no
-            fi
-
-            if printf '%s' "$SSH_PRIVATE_KEY" | grep -q '\\n'; then
-              HAS_ESCAPED_NEWLINES=yes
-            else
-              HAS_ESCAPED_NEWLINES=no
-            fi
-
-            LINE_COUNT="$(wc -l < "$KEY_FILE" | tr -d ' ')"
-
-            echo "::error::SSH key is not a valid private key block. Diagnostics: begin=$HAS_BEGIN end=$HAS_END escaped_newlines=$HAS_ESCAPED_NEWLINES lines=$LINE_COUNT. Store the raw key in SSH_PRIVATE_KEY or a base64-encoded version in SSH_PRIVATE_KEY_BASE64."
-            exit 1
           fi
 
-          echo "SSH_KEY_PATH=$KEY_FILE" >> "$GITHUB_ENV"
+          # Try base64 decoding of raw key
+          if [ -n "$SSH_PRIVATE_KEY" ]; then
+            if printf '%s' "$SSH_PRIVATE_KEY" | tr -d '\r\n\t ' | base64 --decode > "$KEY_FILE" 2>/dev/null; then
+              if grep -Eq "$VALID_KEY_REGEX" "$KEY_FILE"; then
+                chmod 600 "$KEY_FILE"
+                echo "SSH_KEY_PATH=$KEY_FILE" >> "$GITHUB_ENV"
+                exit 0
+              fi
+            fi
+          fi
+
+          # All attempts failed
+          LINE_COUNT="$(wc -l < "$KEY_FILE" 2>/dev/null || echo '0')"
+          HAS_BEGIN="$(grep -q 'BEGIN .* PRIVATE KEY' "$KEY_FILE" 2>/dev/null && echo 'yes' || echo 'no')"
+          HAS_END="$(grep -q 'END .* PRIVATE KEY' "$KEY_FILE" 2>/dev/null && echo 'yes' || echo 'no')"
+
+          echo "::error::SSH key is not a valid private key block. Diagnostics: begin=$HAS_BEGIN end=$HAS_END lines=$LINE_COUNT"
+          echo "::error::Use SSH_PRIVATE_KEY_BASE64: base64 < ~/.ssh/your_key | tr -d '\n'"
+          exit 1
 
       - name: Deploy stack on Hetzner
         uses: appleboy/ssh-action@v1.0.3
