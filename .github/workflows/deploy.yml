@@ -19,15 +19,35 @@ jobs:
     name: Deploy over SSH
     needs: verify
     runs-on: ubuntu-latest
+    env:
+      SSH_HOST: ${{ secrets.SSH_HOST || vars.SSH_HOST || vars.HETZNER_HOST }}
+      SSH_USER: ${{ secrets.SSH_USER || vars.SSH_USER || vars.HETZNER_USER }}
+      SSH_PORT: ${{ secrets.SSH_PORT || vars.SSH_PORT || '22' }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY || secrets.HETZNER_SSH_PRIVATE_KEY }}
 
     steps:
+      - name: Validate SSH configuration
+        run: |
+          test -n "$SSH_HOST" || {
+            echo "::error::Missing SSH host. Set the SSH_HOST secret, or define SSH_HOST/HETZNER_HOST as a repository variable."
+            exit 1
+          }
+          test -n "$SSH_USER" || {
+            echo "::error::Missing SSH user. Set the SSH_USER secret, or define SSH_USER/HETZNER_USER as a repository variable."
+            exit 1
+          }
+          test -n "$SSH_PRIVATE_KEY" || {
+            echo "::error::Missing SSH private key. Set the SSH_PRIVATE_KEY secret."
+            exit 1
+          }
+
       - name: Deploy stack on Hetzner
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT || '22' }}
+          host: ${{ env.SSH_HOST }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.SSH_PRIVATE_KEY }}
+          port: ${{ env.SSH_PORT }}
           script: |
             set -eu
 
