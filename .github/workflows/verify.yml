@@ -1,0 +1,48 @@
+name: Verify
+
+on:
+  workflow_call:
+
+jobs:
+  test:
+    name: Supabase Logic Tests
+    runs-on: ubuntu-latest
+    container: node:20
+    steps:
+      - name: Checkout Demo Repo
+        uses: actions/checkout@v4
+
+      - name: Checkout Core Repo
+        uses: actions/checkout@v4
+        with:
+          repository: AI-Passione/famiglia-core
+          path: famiglia-core
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: famiglia-core/src/famiglia_core/command_center/frontend/package-lock.json
+
+      - name: Inject Supabase Support
+        run: |
+          cd famiglia-core/src/famiglia_core/command_center/frontend
+          echo "Applying Supabase Patch..."
+          patch -p1 < ../../../../../supabase/supabase.patch
+          
+          echo "Copying Overlay Source files..."
+          cp ../../../../../supabase/*.ts ./src/
+          
+          echo "Copying Overlay Test files..."
+          mkdir -p ../../../../tests/command_center/frontend/
+          cp ../../../../../tests/*.spec.ts ../../../../tests/command_center/frontend/
+          
+          echo "Installing Supabase SDK..."
+          npm install @supabase/supabase-js --save
+
+      - name: Run Supabase Logic Tests
+        run: |
+          cd famiglia-core/src/famiglia_core/command_center/frontend
+          echo "Running Injected Supabase Logic Tests..."
+          npx vitest run test_supabase_api_service.spec.ts

@@ -1,0 +1,10 @@
+name: Test (Commit CI)
+
+on:
+  push:
+    branches-ignore: [ main ]
+  workflow_dispatch:
+
+jobs:
+  run-verification:
+    uses: ./.github/workflows/verify.yml
