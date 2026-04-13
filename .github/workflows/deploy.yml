@@ -70,8 +70,8 @@ jobs:
             printf '%b' "$SSH_PRIVATE_KEY" | tr -d '\r' > "$KEY_FILE"
           fi
           
-          # Make readable by all (including Docker container)
-          chmod 644 "$KEY_FILE"
+          # Make readable by owner only (required by SSH)
+          chmod 600 "$KEY_FILE"
           echo "SSH_KEY_FILE=${GITHUB_WORKSPACE}/.github/.deploy_key" >> "$GITHUB_ENV"
 
       - name: Deploy stack on Hetzner
@@ -130,20 +130,20 @@ jobs:
 
             echo "Generating .env from GitHub Secrets..."
             cat <<EOF > .env
-APP_ENV=$APP_ENV
-DB_USER=$DB_USER
-DB_PASSWORD=$DB_PASSWORD
-DB_NAME=$DB_NAME
-GEMINI_API_KEY=$GEMINI_API_KEY
-ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY
-PERPLEXITY_API_KEY=$PERPLEXITY_API_KEY
-SLACK_APP_TOKEN=$SLACK_APP_TOKEN
-SLACK_BOT_TOKEN_SYSTEM=$SLACK_BOT_TOKEN_SYSTEM
-OLLAMA_HOST=$OLLAMA_HOST
-GITHUB_APP_ID_RICCARDO=$GITHUB_APP_ID_RICCARDO
-GITHUB_APP_PRIVATE_KEY_RICCARDO=$GITHUB_APP_PRIVATE_KEY_RICCARDO
-NOTION_API_KEY_ROSSINI=$NOTION_API_KEY_ROSSINI
-EOF
+            APP_ENV="$APP_ENV"
+            DB_USER="$DB_USER"
+            DB_PASSWORD="$DB_PASSWORD"
+            DB_NAME="$DB_NAME"
+            GEMINI_API_KEY="$GEMINI_API_KEY"
+            ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY"
+            PERPLEXITY_API_KEY="$PERPLEXITY_API_KEY"
+            SLACK_APP_TOKEN="$SLACK_APP_TOKEN"
+            SLACK_BOT_TOKEN_SYSTEM="$SLACK_BOT_TOKEN_SYSTEM"
+            OLLAMA_HOST="$OLLAMA_HOST"
+            GITHUB_APP_ID_RICCARDO="$GITHUB_APP_ID_RICCARDO"
+            GITHUB_APP_PRIVATE_KEY_RICCARDO="$GITHUB_APP_PRIVATE_KEY_RICCARDO"
+            NOTION_API_KEY_ROSSINI="$NOTION_API_KEY_ROSSINI"
+            EOF
 
             chmod 600 .env
 
