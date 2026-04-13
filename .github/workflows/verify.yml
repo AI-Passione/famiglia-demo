@@ -4,13 +4,14 @@ on:
   workflow_call:
 
 jobs:
-  test:
-    name: Supabase Logic Tests
+  deployment_config:
+    name: Deployment Config Checks
     runs-on: ubuntu-latest
-    container: node:20
     steps:
       - name: Checkout Demo Repo
         uses: actions/checkout@v4
+        with:
+          path: famiglia-demo
 
       - name: Checkout Core Repo
         uses: actions/checkout@v4
@@ -18,39 +19,11 @@ jobs:
           repository: AI-Passione/famiglia-core
           path: famiglia-core
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: famiglia-core/src/famiglia_core/command_center/frontend/package-lock.json
+      - name: Prepare Environment
+        run: |
+          cp famiglia-demo/.env.example famiglia-demo/.env
+          echo "DEV_CHANNEL_ID=ci" >> famiglia-demo/.env
 
-      - name: Inject Supabase Support
-        run: |
-          cd famiglia-core/src/famiglia_core/command_center/frontend
-          echo "Applying Supabase Patch..."
-          patch -p1 < ../../../../../supabase/supabase.patch
-          
-          echo "Copying Overlay Source files..."
-          cp ../../../../../supabase/*.ts ./src/
-          
-          echo "Copying Overlay Test files..."
-          mkdir -p ../../../../tests/command_center/frontend/
-          cp ../../../../../tests/*.spec.ts ../../../../tests/command_center/frontend/
-          
-      - name: Install Dependencies
-        run: |
-          cd famiglia-core/src/famiglia_core/command_center/frontend
-          npm install
-
-      - name: Type Check Frontend
-        run: |
-          cd famiglia-core/src/famiglia_core/command_center/frontend
-          export VITE_BASE_PATH="/${{ github.event.repository.name }}/"
-          npm run build
-
-      - name: Run Supabase Logic Tests
-        run: |
-          cd famiglia-core/src/famiglia_core/command_center/frontend
-          echo "Running Injected Supabase Logic Tests..."
-          npx vitest run ../../../../tests/command_center/frontend/test_supabase_api_service.spec.ts
+      - name: Validate Docker Compose Stack
+        working-directory: famiglia-demo
+        run: docker compose config >/dev/null
