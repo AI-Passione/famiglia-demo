@@ -24,6 +24,7 @@ jobs:
       SSH_USER: ${{ secrets.SSH_USER || vars.SSH_USER || vars.HETZNER_USER }}
       SSH_PORT: ${{ secrets.SSH_PORT || vars.SSH_PORT || '22' }}
       SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY || secrets.HETZNER_SSH_PRIVATE_KEY }}
+      SSH_PRIVATE_KEY_BASE64: ${{ secrets.SSH_PRIVATE_KEY_BASE64 || secrets.HETZNER_SSH_PRIVATE_KEY_BASE64 }}
       SSH_PASSPHRASE: ${{ secrets.SSH_PASSPHRASE || secrets.HETZNER_SSH_PASSPHRASE }}
 
     steps:
@@ -37,17 +38,37 @@ jobs:
             echo "::error::Missing SSH user. Set the SSH_USER secret, or define SSH_USER/HETZNER_USER as a repository variable."
             exit 1
           }
-          test -n "$SSH_PRIVATE_KEY" || {
-            echo "::error::Missing SSH private key. Set the SSH_PRIVATE_KEY secret."
+          test -n "$SSH_PRIVATE_KEY$SSH_PRIVATE_KEY_BASE64" || {
+            echo "::error::Missing SSH private key. Set SSH_PRIVATE_KEY or SSH_PRIVATE_KEY_BASE64."
             exit 1
           }
+
+      - name: Materialize SSH key
+        run: |
+          mkdir -p "$RUNNER_TEMP/.ssh"
+          KEY_FILE="$RUNNER_TEMP/.ssh/deploy_key"
+
+          if [ -n "$SSH_PRIVATE_KEY_BASE64" ]; then
+            printf '%s' "$SSH_PRIVATE_KEY_BASE64" | base64 --decode > "$KEY_FILE"
+          else
+            printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > "$KEY_FILE"
+          fi
+
+          chmod 600 "$KEY_FILE"
+
+          if ! grep -Eq '^-----BEGIN (OPENSSH|RSA|EC|DSA) PRIVATE KEY-----$' "$KEY_FILE"; then
+            echo "::error::SSH key is not a valid private key block. Store the raw key in SSH_PRIVATE_KEY or a base64-encoded version in SSH_PRIVATE_KEY_BASE64."
+            exit 1
+          fi
+
+          echo "SSH_KEY_PATH=$KEY_FILE" >> "$GITHUB_ENV"
 
       - name: Deploy stack on Hetzner
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ env.SSH_HOST }}
           username: ${{ env.SSH_USER }}
-          key: ${{ env.SSH_PRIVATE_KEY }}
+          key_path: ${{ env.SSH_KEY_PATH }}
           passphrase: ${{ env.SSH_PASSPHRASE }}
           port: ${{ env.SSH_PORT }}
           script: |

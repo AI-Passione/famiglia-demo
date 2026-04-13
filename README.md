@@ -28,7 +28,7 @@ Configure these GitHub Actions secrets:
 
 - `SSH_HOST`
 - `SSH_USER`
-- `SSH_PRIVATE_KEY`
+- `SSH_PRIVATE_KEY` or `SSH_PRIVATE_KEY_BASE64`
 - `SSH_PASSPHRASE` (only if the private key is encrypted)
 - `SSH_PORT` (optional, defaults to `22`)
 
@@ -41,6 +41,14 @@ Configure these GitHub Actions secrets:
 ```
 
 Do not store the public key, and do not store a shell variable name like `$SSH_PRIVATE_KEY` as the secret value.
+
+If GitHub keeps mangling the multiline key for you, store a base64-encoded version instead:
+
+```bash
+base64 < ~/.ssh/your_private_key | tr -d '\n'
+```
+
+Save that output as `SSH_PRIVATE_KEY_BASE64`.
 
 The target server also needs:
 
