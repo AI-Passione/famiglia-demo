@@ -43,62 +43,27 @@ jobs:
             exit 1
           }
 
-      - name: Materialize SSH key
+      - name: Decode SSH key
         run: |
-          mkdir -p "$RUNNER_TEMP/.ssh"
-          KEY_FILE="$RUNNER_TEMP/.ssh/deploy_key"
-          VALID_KEY_REGEX='^-----BEGIN (OPENSSH|RSA|EC|DSA) PRIVATE KEY-----$'
-
-          # Try to decode from base64 first
           if [ -n "$SSH_PRIVATE_KEY_BASE64" ]; then
-            CLEAN_BASE64="$(printf '%s' "$SSH_PRIVATE_KEY_BASE64" | tr -d '\r\n\t ')"
-            if printf '%s' "$CLEAN_BASE64" | base64 --decode > "$KEY_FILE" 2>/dev/null; then
-              chmod 600 "$KEY_FILE"
-              if grep -Eq "$VALID_KEY_REGEX" "$KEY_FILE"; then
-                echo "SSH_KEY_PATH=$KEY_FILE" >> "$GITHUB_ENV"
-                exit 0
-              fi
-            fi
+            SSH_KEY="$(printf '%s' "$SSH_PRIVATE_KEY_BASE64" | tr -d '\r\n\t ' | base64 --decode)"
+            echo "SSH_KEY<<EOF" >> "$GITHUB_ENV"
+            echo "$SSH_KEY" >> "$GITHUB_ENV"
+            echo "EOF" >> "$GITHUB_ENV"
+          elif [ -n "$SSH_PRIVATE_KEY" ]; then
+            echo "SSH_KEY<<EOF" >> "$GITHUB_ENV"
+            printf '%b' "$SSH_PRIVATE_KEY" | tr -d '\r' >> "$GITHUB_ENV"
+            echo "EOF" >> "$GITHUB_ENV"
           fi
-
-          # Try raw key with escaped newlines (\n literal)
-          if [ -n "$SSH_PRIVATE_KEY" ]; then
-            printf '%b' "$SSH_PRIVATE_KEY" | tr -d '\r' > "$KEY_FILE" 2>/dev/null || true
-            if grep -Eq "$VALID_KEY_REGEX" "$KEY_FILE"; then
-              chmod 600 "$KEY_FILE"
-              echo "SSH_KEY_PATH=$KEY_FILE" >> "$GITHUB_ENV"
-              exit 0
-            fi
-          fi
-
-          # Try base64 decoding of raw key
-          if [ -n "$SSH_PRIVATE_KEY" ]; then
-            if printf '%s' "$SSH_PRIVATE_KEY" | tr -d '\r\n\t ' | base64 --decode > "$KEY_FILE" 2>/dev/null; then
-              if grep -Eq "$VALID_KEY_REGEX" "$KEY_FILE"; then
-                chmod 600 "$KEY_FILE"
-                echo "SSH_KEY_PATH=$KEY_FILE" >> "$GITHUB_ENV"
-                exit 0
-              fi
-            fi
-          fi
-
-          # All attempts failed
-          LINE_COUNT="$(wc -l < "$KEY_FILE" 2>/dev/null || echo '0')"
-          HAS_BEGIN="$(grep -q 'BEGIN .* PRIVATE KEY' "$KEY_FILE" 2>/dev/null && echo 'yes' || echo 'no')"
-          HAS_END="$(grep -q 'END .* PRIVATE KEY' "$KEY_FILE" 2>/dev/null && echo 'yes' || echo 'no')"
-
-          echo "::error::SSH key is not a valid private key block. Diagnostics: begin=$HAS_BEGIN end=$HAS_END lines=$LINE_COUNT"
-          echo "::error::Use SSH_PRIVATE_KEY_BASE64: base64 < ~/.ssh/your_key | tr -d '\n'"
-          exit 1
 
       - name: Deploy stack on Hetzner
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ env.SSH_HOST }}
           username: ${{ env.SSH_USER }}
-          key_path: ${{ env.SSH_KEY_PATH }}
+          key: ${{ env.SSH_KEY }}
           passphrase: ${{ env.SSH_PASSPHRASE }}
-          port: ${{ env.SSH_PORT }}
+          port: ${{ env.SSH_PORT || '22' }}
           script: |
             set -eu
 
