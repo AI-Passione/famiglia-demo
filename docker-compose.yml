@@ -3,7 +3,7 @@ services:
     build:
       context: ..
       dockerfile: famiglia-core/Dockerfile
-    image: ghcr.io/ai-passione/famiglia-core:latest
+    image: ghcr.io/ai-passione/famiglia-core:production
     env_file:
       - .env
     ports:
