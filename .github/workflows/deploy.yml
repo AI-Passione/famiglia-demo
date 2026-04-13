@@ -59,27 +59,24 @@ jobs:
             exit 1
           }
 
-      - name: Decode and prepare SSH key
+      - name: Prepare SSH Key
         run: |
-          KEY_FILE="${GITHUB_WORKSPACE}/.github/.deploy_key"
-          mkdir -p "$(dirname "$KEY_FILE")"
-          
           if [ -n "$SSH_PRIVATE_KEY_BASE64" ]; then
-            printf '%s' "$SSH_PRIVATE_KEY_BASE64" | tr -d '\r\n\t ' | base64 --decode > "$KEY_FILE"
-          elif [ -n "$SSH_PRIVATE_KEY" ]; then
-            printf '%b' "$SSH_PRIVATE_KEY" | tr -d '\r' > "$KEY_FILE"
+            echo "DECODED_SSH_KEY<<EOF" >> $GITHUB_ENV
+            echo "$SSH_PRIVATE_KEY_BASE64" | tr -d '\r\n\t ' | base64 --decode >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          else
+            echo "DECODED_SSH_KEY<<EOF" >> $GITHUB_ENV
+            echo "$SSH_PRIVATE_KEY" | tr -d '\r' >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
           fi
-          
-          # Make readable by owner only (required by SSH)
-          chmod 600 "$KEY_FILE"
-          echo "SSH_KEY_FILE=${GITHUB_WORKSPACE}/.github/.deploy_key" >> "$GITHUB_ENV"
 
       - name: Deploy stack on Hetzner
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ env.SSH_HOST }}
           username: ${{ env.SSH_USER }}
-          key_path: ${{ env.SSH_KEY_FILE }}
+          key: ${{ env.DECODED_SSH_KEY }}
           passphrase: ${{ env.SSH_PASSPHRASE }}
           port: ${{ env.SSH_PORT || '22' }}
           envs: APP_ENV,DB_USER,DB_PASSWORD,DB_NAME,GEMINI_API_KEY,ANTHROPIC_API_KEY,PERPLEXITY_API_KEY,SLACK_APP_TOKEN,SLACK_BOT_TOKEN_SYSTEM,OLLAMA_HOST,GITHUB_APP_ID_RICCARDO,GITHUB_APP_PRIVATE_KEY_RICCARDO,NOTION_API_KEY_ROSSINI
@@ -130,20 +127,20 @@ jobs:
 
             echo "Generating .env from GitHub Secrets..."
             cat <<EOF > .env
-            APP_ENV="$APP_ENV"
-            DB_USER="$DB_USER"
-            DB_PASSWORD="$DB_PASSWORD"
-            DB_NAME="$DB_NAME"
-            GEMINI_API_KEY="$GEMINI_API_KEY"
-            ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY"
-            PERPLEXITY_API_KEY="$PERPLEXITY_API_KEY"
-            SLACK_APP_TOKEN="$SLACK_APP_TOKEN"
-            SLACK_BOT_TOKEN_SYSTEM="$SLACK_BOT_TOKEN_SYSTEM"
-            OLLAMA_HOST="$OLLAMA_HOST"
-            GITHUB_APP_ID_RICCARDO="$GITHUB_APP_ID_RICCARDO"
-            GITHUB_APP_PRIVATE_KEY_RICCARDO="$GITHUB_APP_PRIVATE_KEY_RICCARDO"
-            NOTION_API_KEY_ROSSINI="$NOTION_API_KEY_ROSSINI"
-            EOF
+APP_ENV="$APP_ENV"
+DB_USER="$DB_USER"
+DB_PASSWORD="$DB_PASSWORD"
+DB_NAME="$DB_NAME"
+GEMINI_API_KEY="$GEMINI_API_KEY"
+ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY"
+PERPLEXITY_API_KEY="$PERPLEXITY_API_KEY"
+SLACK_APP_TOKEN="$SLACK_APP_TOKEN"
+SLACK_BOT_TOKEN_SYSTEM="$SLACK_BOT_TOKEN_SYSTEM"
+OLLAMA_HOST="$OLLAMA_HOST"
+GITHUB_APP_ID_RICCARDO="$GITHUB_APP_ID_RICCARDO"
+GITHUB_APP_PRIVATE_KEY_RICCARDO="$GITHUB_APP_PRIVATE_KEY_RICCARDO"
+NOTION_API_KEY_ROSSINI="$NOTION_API_KEY_ROSSINI"
+EOF
 
             chmod 600 .env
 
