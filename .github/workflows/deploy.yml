@@ -45,8 +45,8 @@ jobs:
 
       - name: Prepare SSH key file
         run: |
-          mkdir -p ~/.ssh
-          KEY_FILE="$HOME/.ssh/deploy_key"
+          mkdir -p "$RUNNER_TEMP/.ssh"
+          KEY_FILE="$RUNNER_TEMP/.ssh/deploy_key"
           
           if [ -n "$SSH_PRIVATE_KEY_BASE64" ]; then
             printf '%s' "$SSH_PRIVATE_KEY_BASE64" | tr -d '\r\n\t ' | base64 --decode > "$KEY_FILE"
