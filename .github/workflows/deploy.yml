@@ -217,11 +217,11 @@ jobs:
               fi
             done
 
-            # Dynamically set base URLs based on SSH_HOST
+            # Dynamically set base URLs based on SSH_HOST (No ports, handled by Gateway)
             if [ -n "${SSH_HOST:-}" ]; then
-              echo "FRONTEND_BASE_URL=\"http://$SSH_HOST:5173\"" >> .env
-              echo "BACKEND_BASE_URL=\"http://$SSH_HOST:8000\"" >> .env
-              echo "VITE_BACKEND_BASE=\"http://$SSH_HOST:8000\"" >> .env
+              echo "FRONTEND_BASE_URL=\"http://$SSH_HOST\"" >> .env
+              echo "BACKEND_BASE_URL=\"http://$SSH_HOST\"" >> .env
+              echo "VITE_BACKEND_BASE=\"http://$SSH_HOST\"" >> .env
               echo "Constructed Base URLs for host: $SSH_HOST"
             fi
 
