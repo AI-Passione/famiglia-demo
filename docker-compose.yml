@@ -38,6 +38,7 @@ services:
       - "8000"
     volumes:
       - ./data:/app/data
+      - ./models.demo.json:/app/models.demo.json
     environment:
       - PYTHONPATH=/app/src
       - DB_HOST=postgres
@@ -50,6 +51,7 @@ services:
       - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
       - APP_ENV=${APP_ENV}
       - DUCKDB_DWH_PATH=/app/data/duckdb_dwh.db
+      - FAMIGLIA_MODELS_CONFIG=/app/models.demo.json
     depends_on:
       - postgres
       - redis

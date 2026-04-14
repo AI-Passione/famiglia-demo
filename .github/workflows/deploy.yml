@@ -123,11 +123,16 @@ jobs:
           passphrase: ${{ env.SSH_PASSPHRASE }}
           port: ${{ env.SSH_PORT || '22' }}
           envs: >-
-            APP_ENV,DB_USER,DB_PASSWORD,DB_NAME,GEMINI_API_KEY,ANTHROPIC_API_KEY,PERPLEXITY_API_KEY,SLACK_APP_TOKEN,SLACK_BOT_TOKEN_SYSTEM,OLLAMA_HOST,OLLAMA_API_KEY,OLLAMA_FALLBACK_MODEL,
-            USER_SLACK_ID,DEV_CHANNEL_ID,SLACK_BOT_TOKEN_ALFREDO,SLACK_APP_TOKEN_ALFREDO,SLACK_BOT_TOKEN_VITO,SLACK_APP_TOKEN_VITO,SLACK_BOT_TOKEN_RICCARDO,SLACK_APP_TOKEN_RICCARDO,
-            GITHUB_APP_ID_RICCARDO,GITHUB_APP_INSTALLATION_ID_RICCARDO,GITHUB_APP_PRIVATE_KEY_RICCARDO,SLACK_BOT_TOKEN_ROSSINI,SLACK_APP_TOKEN_ROSSINI,GITHUB_APP_ID_ROSSINI,
-            GITHUB_APP_INSTALLATION_ID_ROSSINI,GITHUB_APP_PRIVATE_KEY_ROSSINI,NOTION_API_KEY_ROSSINI,SLACK_BOT_TOKEN_TOMMY,SLACK_APP_TOKEN_TOMMY,SLACK_BOT_TOKEN_BELLA,
-            SLACK_APP_TOKEN_BELLA,SLACK_BOT_TOKEN_KOWALSKI,SLACK_APP_TOKEN_KOWALSKI,NOTION_API_KEY_KOWALSKI,
+            APP_ENV,DB_USER,DB_PASSWORD,DB_NAME,GEMINI_API_KEY,ANTHROPIC_API_KEY,PERPLEXITY_API_KEY,
+            SLACK_APP_TOKEN,SLACK_BOT_TOKEN_SYSTEM,USER_SLACK_ID,DEV_CHANNEL_ID,
+            OLLAMA_HOST,OLLAMA_API_KEY,OLLAMA_FALLBACK_MODEL,
+            SLACK_BOT_TOKEN_ALFREDO,SLACK_APP_TOKEN_ALFREDO,
+            SLACK_BOT_TOKEN_VITO,SLACK_APP_TOKEN_VITO,
+            SLACK_BOT_TOKEN_RICCARDO,SLACK_APP_TOKEN_RICCARDO,GITHUB_APP_ID_RICCARDO,GITHUB_APP_INSTALLATION_ID_RICCARDO,GITHUB_APP_PRIVATE_KEY_RICCARDO,
+            SLACK_BOT_TOKEN_ROSSINI,SLACK_APP_TOKEN_ROSSINI,GITHUB_APP_ID_ROSSINI,GITHUB_APP_INSTALLATION_ID_ROSSINI,GITHUB_APP_PRIVATE_KEY_ROSSINI,NOTION_API_KEY_ROSSINI,
+            SLACK_BOT_TOKEN_TOMMY,SLACK_APP_TOKEN_TOMMY,
+            SLACK_BOT_TOKEN_BELLA,SLACK_APP_TOKEN_BELLA,
+            SLACK_BOT_TOKEN_KOWALSKI,SLACK_APP_TOKEN_KOWALSKI,NOTION_API_KEY_KOWALSKI,
             SSH_HOST
           script: |
             set -eu
@@ -222,9 +227,12 @@ jobs:
               SLACK_BOT_TOKEN_KOWALSKI SLACK_APP_TOKEN_KOWALSKI NOTION_API_KEY_KOWALSKI
             )
             for var in "${VARS_TO_SYNC[@]}"; do
-              eval value="\${$var:-}"
+              # Use indirect expansion to get the value of the variable named by $var
+              value="${!var:-}"
               if [ -n "$value" ]; then
                 echo "$var=\"$value\"" >> .env
+              else
+                echo "Warning: Variable $var is empty or not set."
               fi
             done
 
@@ -244,3 +252,47 @@ jobs:
             sudo docker compose pull || true
             sudo docker compose up -d --build --remove-orphans
             sudo docker compose ps
+
+      - name: Verify LLM Readiness
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.SSH_HOST }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.DECODED_SSH_KEY }}
+          passphrase: ${{ env.SSH_PASSPHRASE }}
+          port: ${{ env.SSH_PORT || '22' }}
+          script: |
+            export STACK_ROOT=/opt/famiglia
+            cd "$STACK_ROOT/famiglia-demo"
+
+            echo "Verifying LLM Model Readiness (gemma3:4b)..."
+            TIMEOUT=900 # 15 minutes
+            START_TIME=$(date +%s)
+            
+            # Allow some time for services to fully initialize before checking
+            sleep 5 
+
+            while true; do
+              # Check if the model exists in the ollama list
+              if sudo docker compose exec -T ollama ollama list | grep -q "gemma3:4b"; then
+                echo "SUCCESS: LLM Model gemma3:4b is confirmed installed and ready."
+                echo "Latest application output:"
+                sudo docker compose logs --tail=50 app || true
+                break
+              fi
+              
+              CURRENT_TIME=$(date +%s)
+              ELAPSED=$((CURRENT_TIME - START_TIME))
+              
+              if [ $ELAPSED -ge $TIMEOUT ]; then
+                echo "FATAL: Timeout waiting for LLM model installation (exceeded ${TIMEOUT}s)."
+                echo "Current status of containers:"
+                sudo docker compose ps
+                echo "Latest logs for 'app' and 'ollama':"
+                sudo docker compose logs --tail=100 app ollama || true
+                exit 1
+              fi
+              
+              echo "Waiting for model installation... (elapsed: ${ELAPSED}s / ${TIMEOUT}s)"
+              sleep 20
+            done
