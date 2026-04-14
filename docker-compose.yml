@@ -11,9 +11,9 @@ services:
     restart: always
 
   app:
-    build:
-      context: ../famiglia-core
-      dockerfile: Dockerfile
+    # build:
+    #   context: ../famiglia-core
+    #   dockerfile: Dockerfile
     image: ghcr.io/ai-passione/famiglia-core:production
     env_file:
       - .env
@@ -87,12 +87,13 @@ services:
         condition: service_healthy
 
   frontend:
-    build:
-      context: ../famiglia-core/src/famiglia_core/command_center/frontend
-      # Use the local Dockerfile from the demo repo (to avoid permission issues in the core repo)
-      dockerfile: ../../../../../famiglia-demo/frontend.Dockerfile
-      args:
-        - VITE_BACKEND_BASE=${VITE_BACKEND_BASE}
+    # build:
+    #   context: ../famiglia-core/src/famiglia_core/command_center/frontend
+    #   # Use the local Dockerfile from the demo repo (to avoid permission issues in the core repo)
+    #   dockerfile: ../../../../../famiglia-demo/frontend.Dockerfile
+    #   args:
+    #     - VITE_BACKEND_BASE=${VITE_BACKEND_BASE}
+    image: ghcr.io/ai-passione/famiglia-core-frontend:production
     # Removed public port 5173:80; now served via gateway on port 80
     expose:
       - "80"
