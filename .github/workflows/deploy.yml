@@ -245,9 +245,25 @@ jobs:
             sudo docker compose up -d --build --remove-orphans
             sudo docker compose ps
 
+      - name: Verify LLM Readiness
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.SSH_HOST }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.DECODED_SSH_KEY }}
+          passphrase: ${{ env.SSH_PASSPHRASE }}
+          port: ${{ env.SSH_PORT || '22' }}
+          script: |
+            export STACK_ROOT=/opt/famiglia
+            cd "$STACK_ROOT/famiglia-demo"
+
             echo "Verifying LLM Model Readiness (gemma3:4b)..."
             TIMEOUT=900 # 15 minutes
             START_TIME=$(date +%s)
+            
+            # Allow some time for services to fully initialize before checking
+            sleep 5 
+
             while true; do
               # Check if the model exists in the ollama list
               if sudo docker compose exec -T ollama ollama list | grep -q "gemma3:4b"; then
@@ -260,6 +276,8 @@ jobs:
               
               if [ $ELAPSED -ge $TIMEOUT ]; then
                 echo "FATAL: Timeout waiting for LLM model installation (exceeded ${TIMEOUT}s)."
+                echo "Current status of containers:"
+                sudo docker compose ps
                 echo "Last known status of Ollama models:"
                 sudo docker compose exec -T ollama ollama list || true
                 exit 1
