@@ -84,11 +84,16 @@ services:
         condition: service_healthy
 
   frontend:
-    image: ghcr.io/ai-passione/famiglia-core:production
+    build:
+      context: ..
+      dockerfile: famiglia-demo/frontend.Dockerfile
+      args:
+        - VITE_BACKEND_BASE=${VITE_BACKEND_BASE}
+        - VITE_API_BASE=${VITE_API_BASE:-/api}
     env_file:
       - .env
     expose:
-      - "5173"
+      - "80"
     environment:
       - PYTHONPATH=/app/src
       - DB_HOST=postgres
