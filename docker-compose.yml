@@ -56,6 +56,8 @@ services:
       - NOTION_API_KEY_KOWALSKI=${NOTION_API_KEY_KOWALSKI}
       - AGENT_CONTEXT_ENABLED=${AGENT_CONTEXT_ENABLED:-true}
       - DUCKDB_DWH_PATH=${DUCKDB_DWH_PATH:-/app/data/duckdb_dwh.db}
+      - FRONTEND_BASE_URL=${FRONTEND_BASE_URL}
+      - BACKEND_BASE_URL=${BACKEND_BASE_URL}
 
     deploy:
       resources:
@@ -76,6 +78,8 @@ services:
     build:
       context: ../famiglia-core/src/famiglia_core/command_center/frontend
       dockerfile: Dockerfile
+      args:
+        - VITE_BACKEND_BASE=${VITE_BACKEND_BASE}
     ports:
       - "5173:80"
     depends_on:
