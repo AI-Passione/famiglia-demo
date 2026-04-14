@@ -1,59 +1,65 @@
 {
   "defaults": {
-    "ollama_fallback": "gemma3:4b",
+    "ollama_fallback": "gemma3:1b",
     "ollama_fallback_key": "ollama-gemma3",
     "provider": "ollama"
   },
   "models": {
-    "gemma3_local": {
-      "tag": "gemma3:4b",
+    "gemma3_1b": {
+      "tag": "gemma3:1b",
       "provider": "ollama",
-      "description": "Gemma 3 4B (Hetzner Local)",
-      "ram_gb": 3.0
+      "description": "Gemma 3 1B (Ultra-lightweight)",
+      "ram_gb": 1.5
+    },
+    "gemma3_local": {
+      "tag": "gemma3:1b",
+      "provider": "ollama",
+      "description": "Consolidated to Gemma 3 1B",
+      "ram_gb": 1.5
     },
     "gemma4_e2b": {
-      "tag": "gemma3:4b",
+      "tag": "gemma3:1b",
       "provider": "ollama",
-      "description": "Consolidated to Gemma 3 4B",
-      "ram_gb": 3.0
+      "description": "Consolidated to Gemma 3 1B",
+      "ram_gb": 1.5
     },
     "deepseek_r1_7b": {
-      "tag": "gemma3:4b",
+      "tag": "gemma3:1b",
       "provider": "ollama",
-      "description": "Consolidated to Gemma 3 4B",
-      "ram_gb": 3.0
+      "description": "Consolidated to Gemma 3 1B",
+      "ram_gb": 1.5
     },
     "qwen2_5_coder_7b": {
-      "tag": "gemma3:4b",
+      "tag": "gemma3:1b",
       "provider": "ollama",
-      "description": "Consolidated to Gemma 3 4B",
-      "ram_gb": 3.0
+      "description": "Consolidated to Gemma 3 1B",
+      "ram_gb": 1.5
     },
     "qwen2_5_3b": {
-      "tag": "gemma3:4b",
+      "tag": "gemma3:1b",
       "provider": "ollama",
-      "description": "Consolidated to Gemma 3 4B",
-      "ram_gb": 3.0
+      "description": "Consolidated to Gemma 3 1B",
+      "ram_gb": 1.5
     },
     "qwen2_5_3b_instruct_q4_k_m": {
-      "tag": "gemma3:4b",
+      "tag": "gemma3:1b",
       "provider": "ollama",
-      "description": "Consolidated to Gemma 3 4B",
-      "ram_gb": 3.0
+      "description": "Consolidated to Gemma 3 1B",
+      "ram_gb": 1.5
     },
     "mistral_7b": {
-      "tag": "gemma3:4b",
+      "tag": "gemma3:1b",
       "provider": "ollama",
-      "description": "Consolidated to Gemma 3 4B",
-      "ram_gb": 3.0
+      "description": "Consolidated to Gemma 3 1B",
+      "ram_gb": 1.5
     }
   },
   "tasks": {
-    "CHAT": "gemma3_local",
-    "SEARCH": "gemma3_local",
-    "COMPLEX": "gemma3_local",
-    "CODING": "gemma3_local",
-    "TOOL": "gemma3_local",
-    "WORKFLOW": "gemma3_local"
+    "CHAT": "gemma3_1b",
+    "SEARCH": "gemma3_1b",
+    "COMPLEX": "gemma3_1b",
+    "CODING": "gemma3_1b",
+    "TOOL": "gemma3_1b",
+    "WORKFLOW": "gemma3_1b"
   }
 }
