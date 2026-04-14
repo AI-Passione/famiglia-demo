@@ -170,11 +170,22 @@ jobs:
 
             sync_repo() {
               REPO_DIR="$1"
+              FALLBACK_BRANCH="main"
 
               cd "$REPO_DIR"
-              git fetch origin "$DEPLOY_BRANCH"
-              git checkout "$DEPLOY_BRANCH" || git checkout -b "$DEPLOY_BRANCH" "origin/$DEPLOY_BRANCH"
-              git pull --ff-only origin "$DEPLOY_BRANCH"
+              echo "Checking for branch '$DEPLOY_BRANCH' in $REPO_DIR..."
+              
+              if git ls-remote --exit-code --heads origin "$DEPLOY_BRANCH" > /dev/null 2>&1; then
+                TARGET_BRANCH="$DEPLOY_BRANCH"
+                echo "Found remote branch '$TARGET_BRANCH'. Synchronizing..."
+              else
+                TARGET_BRANCH="$FALLBACK_BRANCH"
+                echo "Branch '$DEPLOY_BRANCH' not found on remote. Falling back to '$TARGET_BRANCH'..."
+              fi
+
+              git fetch origin "$TARGET_BRANCH"
+              git checkout "$TARGET_BRANCH" || git checkout -b "$TARGET_BRANCH" "origin/$TARGET_BRANCH"
+              git pull --ff-only origin "$TARGET_BRANCH"
               cd "$STACK_ROOT"
             }
 
