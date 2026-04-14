@@ -1,31 +1,21 @@
 services:
-  gateway:
-    build:
-      context: ..
-      dockerfile: famiglia-demo/frontend.Dockerfile
-      args:
-        - VITE_BACKEND_BASE=${VITE_BACKEND_BASE}
-        - VITE_API_BASE=${VITE_API_BASE:-/api/v1}
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - app
-    restart: always
-
   app:
-    restart: always
     build:
       context: ../famiglia-core
       dockerfile: Dockerfile
+      args:
+        - VITE_BACKEND_BASE=${VITE_BACKEND_BASE}
+        - VITE_API_BASE=${VITE_API_BASE:-/api/v1}
+    restart: always
     env_file:
       - .env
-    # Removed public port 8000:8000 for security; now served via gateway
+    ports:
+      - "80:80"
     expose:
       - "8000"
     volumes:
       - ./data:/app/data
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
     environment:
       - PYTHONPATH=/app/src
       - DB_HOST=postgres
@@ -37,57 +27,22 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - SLACK_BOT_TOKEN_ALFREDO=${SLACK_BOT_TOKEN_ALFREDO}
-      - SLACK_BOT_TOKEN_VITO=${SLACK_BOT_TOKEN_VITO}
-      - SLACK_BOT_TOKEN_RICCARDO=${SLACK_BOT_TOKEN_RICCARDO}
-      - SLACK_BOT_TOKEN_ROSSINI=${SLACK_BOT_TOKEN_ROSSINI}
-      - SLACK_BOT_TOKEN_TOMMY=${SLACK_BOT_TOKEN_TOMMY}
-      - SLACK_BOT_TOKEN_BELLA=${SLACK_BOT_TOKEN_BELLA}
-      - SLACK_BOT_TOKEN_KOWALSKI=${SLACK_BOT_TOKEN_KOWALSKI}
-      - SLACK_BOT_TOKEN_SYSTEM=${SLACK_BOT_TOKEN_SYSTEM}
-      - SLACK_APP_TOKEN=${SLACK_APP_TOKEN}
-      - SLACK_APP_TOKEN_ALFREDO=${SLACK_APP_TOKEN_ALFREDO}
-      - SLACK_APP_TOKEN_VITO=${SLACK_APP_TOKEN_VITO}
-      - SLACK_APP_TOKEN_RICCARDO=${SLACK_APP_TOKEN_RICCARDO}
-      - SLACK_APP_TOKEN_ROSSINI=${SLACK_APP_TOKEN_ROSSINI}
-      - SLACK_APP_TOKEN_TOMMY=${SLACK_APP_TOKEN_TOMMY}
-      - SLACK_APP_TOKEN_BELLA=${SLACK_APP_TOKEN_BELLA}
-      - SLACK_APP_TOKEN_KOWALSKI=${SLACK_APP_TOKEN_KOWALSKI}
-      - USER_SLACK_ID=${USER_SLACK_ID}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
       - OLLAMA_HOST=http://ollama:11434
       - OLLAMA_FALLBACK_MODEL=${OLLAMA_FALLBACK_MODEL:-gemma3:4b}
       - OLLAMA_API_KEY=${OLLAMA_API_KEY}
-      - APP_ENV=${APP_ENV:-development}
-      - DEV_CHANNEL_ID=${DEV_CHANNEL_ID}
-      - GITHUB_APP_ID_RICCARDO=${GITHUB_APP_ID_RICCARDO}
-      - GITHUB_APP_INSTALLATION_ID_RICCARDO=${GITHUB_APP_INSTALLATION_ID_RICCARDO}
-      - GITHUB_APP_PRIVATE_KEY_RICCARDO=${GITHUB_APP_PRIVATE_KEY_RICCARDO}
-      - GITHUB_APP_ID_ROSSINI=${GITHUB_APP_ID_ROSSINI}
-      - GITHUB_APP_INSTALLATION_ID_ROSSINI=${GITHUB_APP_INSTALLATION_ID_ROSSINI}
-      - GITHUB_APP_PRIVATE_KEY_ROSSINI=${GITHUB_APP_PRIVATE_KEY_ROSSINI}
+      - APP_ENV=${APP_ENV}
       - NOTION_API_KEY_ROSSINI=${NOTION_API_KEY_ROSSINI}
       - NOTION_API_KEY_KOWALSKI=${NOTION_API_KEY_KOWALSKI}
-      - AGENT_CONTEXT_ENABLED=${AGENT_CONTEXT_ENABLED:-true}
-      - DUCKDB_DWH_PATH=${DUCKDB_DWH_PATH:-/app/data/duckdb_dwh.db}
-      - FRONTEND_BASE_URL=${FRONTEND_BASE_URL}
-      - BACKEND_BASE_URL=${BACKEND_BASE_URL}
-
-
+      - DUCKDB_DWH_PATH=/app/data/duckdb_dwh.db
     depends_on:
       - postgres
       - redis
       - ollama
 
-
-
   redis:
     image: redis:7-alpine
     expose:
       - "6379"
-
     volumes:
       - redis_data:/data
 
@@ -95,7 +50,6 @@ services:
     image: postgres:15-alpine
     expose:
       - "5432"
-
     environment:
       - POSTGRES_USER=${DB_USER:-passione_admin}
       - POSTGRES_PASSWORD=${DB_PASSWORD:-passione_password}
@@ -136,30 +90,7 @@ services:
       retries: 5
       start_period: 20s
 
-  prometheus:
-    image: prom/prometheus:latest
-    restart: always
-    volumes:
-      - ../famiglia-core/src/famiglia_core/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    expose:
-      - "9090"
-
-  grafana:
-    image: grafana/grafana-oss:latest
-    restart: always
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s:%(http_port)s/grafana/
-      - GF_SERVER_SERVE_FROM_SUB_PATH=true
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ../famiglia-core/src/famiglia_core/observability/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ../famiglia-core/src/famiglia_core/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
-    expose:
-      - "3000"
-
 volumes:
   redis_data:
   postgres_data:
   ollama_data:
-  grafana_data:
