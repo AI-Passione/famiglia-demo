@@ -4,7 +4,6 @@ This repository is the deployment and orchestration layer for the Famiglia demo 
 
 - [`famiglia-demo`](https://github.com/AI-Passione/famiglia-demo)
 - [`famiglia-core`](https://github.com/AI-Passione/famiglia-core)
-- [`la-passione`](https://github.com/davnnis2003/la-passione)
 
 ## Architecture
 

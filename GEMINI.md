@@ -26,4 +26,4 @@ This repository follows the **[AI_MANIFESTO.md](AI_MANIFESTO.md)**. Read it now.
 
 Do not wait for permission. If you see a way to make the demo more premium, propose it or implement a prototype.
 
-"La Passione" is about the art of the agentic AI. Keep the vibes high.
+"AI" is about the art of the agentic AI. Keep the vibes high.
