@@ -1,4 +1,15 @@
 services:
+  gateway:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - app
+    restart: always
+
   app:
     build:
       context: ../famiglia-core
@@ -6,8 +17,9 @@ services:
     image: ghcr.io/ai-passione/famiglia-core:production
     env_file:
       - .env
-    ports:
-      - "8000:8000"
+    # Removed public port 8000:8000 for security; now served via gateway
+    expose:
+      - "8000"
     volumes:
       - ./data:/app/data
     environment:
@@ -56,6 +68,8 @@ services:
       - NOTION_API_KEY_KOWALSKI=${NOTION_API_KEY_KOWALSKI}
       - AGENT_CONTEXT_ENABLED=${AGENT_CONTEXT_ENABLED:-true}
       - DUCKDB_DWH_PATH=${DUCKDB_DWH_PATH:-/app/data/duckdb_dwh.db}
+      - FRONTEND_BASE_URL=${FRONTEND_BASE_URL}
+      - BACKEND_BASE_URL=${BACKEND_BASE_URL}
 
     deploy:
       resources:
@@ -75,17 +89,21 @@ services:
   frontend:
     build:
       context: ../famiglia-core/src/famiglia_core/command_center/frontend
-      dockerfile: Dockerfile
-    ports:
-      - "5173:80"
+      # Use the local Dockerfile from the demo repo (to avoid permission issues in the core repo)
+      dockerfile: ../../../../../famiglia-demo/frontend.Dockerfile
+      args:
+        - VITE_BACKEND_BASE=${VITE_BACKEND_BASE}
+    # Removed public port 5173:80; now served via gateway on port 80
+    expose:
+      - "80"
     depends_on:
       app:
         condition: service_started
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
     deploy:
       resources:
         limits:
@@ -97,8 +115,8 @@ services:
 
   postgres:
     image: postgres:15-alpine
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
     deploy:
       resources:
         limits:
@@ -125,13 +143,13 @@ services:
 
   ollama:
     image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
+    expose:
+      - "11434"
     environment:
       - OLLAMA_KV_CACHE_TYPE=q8_0
       - OLLAMA_FLASH_ATTENTION=1
-      - OLLAMA_KEEP_ALIVE=0 # Unload instantly to prevent cross-agent RAM collision
-      - OLLAMA_MAX_QUEUE=512 # Allow requests to queue instead of failing instantly
+      - OLLAMA_KEEP_ALIVE=0
+      - OLLAMA_MAX_QUEUE=512
     volumes:
       - ollama_data:/root/.ollama
     healthcheck:
