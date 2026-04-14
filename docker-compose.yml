@@ -47,7 +47,7 @@ services:
       - DB_NAME=${DB_NAME:-passione_db}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
       - APP_ENV=${APP_ENV}
       - DUCKDB_DWH_PATH=/app/data/duckdb_dwh.db
     depends_on:
@@ -89,8 +89,12 @@ services:
     restart: always
     expose:
       - "11434"
+    ports:
+      - "127.0.0.1:11434:11434"
     environment:
       - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_ORIGINS=*
+      - OLLAMA_KEEP_ALIVE=-1
       - OLLAMA_NUM_PARALLEL=1
       - OLLAMA_MAX_LOADED_MODELS=1
     volumes:
