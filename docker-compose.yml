@@ -11,7 +11,9 @@ services:
     restart: always
 
   app:
-    image: ghcr.io/ai-passione/famiglia-core:production
+    build:
+      context: ..
+      dockerfile: famiglia-core/Dockerfile
     env_file:
       - .env
     # Removed public port 8000:8000 for security; now served via gateway
@@ -89,7 +91,7 @@ services:
       dockerfile: famiglia-demo/frontend.Dockerfile
       args:
         - VITE_BACKEND_BASE=${VITE_BACKEND_BASE}
-        - VITE_API_BASE=${VITE_API_BASE:-/api}
+        - VITE_API_BASE=${VITE_API_BASE:-/api/v1}
     env_file:
       - .env
     expose:
