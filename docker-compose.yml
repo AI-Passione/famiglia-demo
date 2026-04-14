@@ -71,20 +71,11 @@ services:
       - FRONTEND_BASE_URL=${FRONTEND_BASE_URL}
       - BACKEND_BASE_URL=${BACKEND_BASE_URL}
 
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 512M
-        reservations:
-          memory: 256M
+
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-      ollama:
-        condition: service_healthy
+      - postgres
+      - redis
+      - ollama
 
   frontend:
     build:
@@ -146,19 +137,13 @@ services:
       - FRONTEND_BASE_URL=${FRONTEND_BASE_URL}
       - BACKEND_BASE_URL=${BACKEND_BASE_URL}
     depends_on:
-      app:
-        condition: service_started
+      - app
 
   redis:
     image: redis:7-alpine
     expose:
       - "6379"
-    deploy:
-      resources:
-        limits:
-          memory: 64M
-        reservations:
-          memory: 32M
+
     volumes:
       - redis_data:/data
 
@@ -166,12 +151,7 @@ services:
     image: postgres:15-alpine
     expose:
       - "5432"
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-        reservations:
-          memory: 128M
+
     environment:
       - POSTGRES_USER=${DB_USER:-passione_admin}
       - POSTGRES_PASSWORD=${DB_PASSWORD:-passione_password}
@@ -219,10 +199,6 @@ services:
       - ../famiglia-core/src/famiglia_core/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     expose:
       - "9090"
-    deploy:
-      resources:
-        limits:
-          memory: 128M
 
   grafana:
     image: grafana/grafana-oss:latest
@@ -237,10 +213,6 @@ services:
       - ../famiglia-core/src/famiglia_core/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
     expose:
       - "3000"
-    deploy:
-      resources:
-        limits:
-          memory: 256M
 
 volumes:
   redis_data:
