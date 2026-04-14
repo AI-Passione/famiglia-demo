@@ -276,6 +276,8 @@ jobs:
               # Check if the model exists in the ollama list
               if sudo docker compose exec -T ollama ollama list | grep -q "gemma3:4b"; then
                 echo "SUCCESS: LLM Model gemma3:4b is confirmed installed and ready."
+                echo "Latest application output:"
+                sudo docker compose logs --tail=50 app || true
                 break
               fi
               
@@ -286,8 +288,8 @@ jobs:
                 echo "FATAL: Timeout waiting for LLM model installation (exceeded ${TIMEOUT}s)."
                 echo "Current status of containers:"
                 sudo docker compose ps
-                echo "Last known status of Ollama models:"
-                sudo docker compose exec -T ollama ollama list || true
+                echo "Latest logs for 'app' and 'ollama':"
+                sudo docker compose logs --tail=100 app ollama || true
                 exit 1
               fi
               
