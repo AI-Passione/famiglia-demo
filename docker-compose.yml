@@ -1,21 +1,37 @@
 services:
+  gateway:
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - app
+
+  frontend:
+    image: ghcr.io/ai-passione/famiglia-core:production
+    restart: always
+    working_dir: /app/src/famiglia_core/command_center/frontend
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "80"]
+    expose:
+      - "80"
+    environment:
+      - VITE_BACKEND_BASE=${VITE_BACKEND_BASE}
+      - VITE_API_BASE=${VITE_API_BASE:-/api/v1}
+    depends_on:
+      - app
+
   app:
-    build:
-      context: ../famiglia-core
-      dockerfile: Dockerfile
-      args:
-        - VITE_BACKEND_BASE=${VITE_BACKEND_BASE}
-        - VITE_API_BASE=${VITE_API_BASE:-/api/v1}
+    image: ghcr.io/ai-passione/famiglia-core:production
     restart: always
     env_file:
       - .env
-    ports:
-      - "80:80"
     expose:
       - "8000"
     volumes:
       - ./data:/app/data
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
     environment:
       - PYTHONPATH=/app/src
       - DB_HOST=postgres
@@ -23,16 +39,10 @@ services:
       - DB_USER=${DB_USER:-passione_admin}
       - DB_PASSWORD=${DB_PASSWORD:-passione_password}
       - DB_NAME=${DB_NAME:-passione_db}
-      - PYTHONUNBUFFERED=1
-      - PYTHONDONTWRITEBYTECODE=1
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - OLLAMA_HOST=http://ollama:11434
-      - OLLAMA_FALLBACK_MODEL=${OLLAMA_FALLBACK_MODEL:-gemma3:4b}
-      - OLLAMA_API_KEY=${OLLAMA_API_KEY}
       - APP_ENV=${APP_ENV}
-      - NOTION_API_KEY_ROSSINI=${NOTION_API_KEY_ROSSINI}
-      - NOTION_API_KEY_KOWALSKI=${NOTION_API_KEY_KOWALSKI}
       - DUCKDB_DWH_PATH=/app/data/duckdb_dwh.db
     depends_on:
       - postgres
@@ -77,10 +87,6 @@ services:
       - OLLAMA_HOST=0.0.0.0
       - OLLAMA_NUM_PARALLEL=1
       - OLLAMA_MAX_LOADED_MODELS=1
-      - OLLAMA_KV_CACHE_TYPE=q8_0
-      - OLLAMA_FLASH_ATTENTION=1
-      - OLLAMA_KEEP_ALIVE=0
-      - OLLAMA_MAX_QUEUE=512
     volumes:
       - ollama_data:/root/.ollama
     healthcheck:
