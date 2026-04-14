@@ -244,3 +244,27 @@ jobs:
             sudo docker compose pull || true
             sudo docker compose up -d --build --remove-orphans
             sudo docker compose ps
+
+            echo "Verifying LLM Model Readiness (gemma3:4b)..."
+            TIMEOUT=900 # 15 minutes
+            START_TIME=$(date +%s)
+            while true; do
+              # Check if the model exists in the ollama list
+              if sudo docker compose exec -T ollama ollama list | grep -q "gemma3:4b"; then
+                echo "SUCCESS: LLM Model gemma3:4b is confirmed installed and ready."
+                break
+              fi
+              
+              CURRENT_TIME=$(date +%s)
+              ELAPSED=$((CURRENT_TIME - START_TIME))
+              
+              if [ $ELAPSED -ge $TIMEOUT ]; then
+                echo "FATAL: Timeout waiting for LLM model installation (exceeded ${TIMEOUT}s)."
+                echo "Last known status of Ollama models:"
+                sudo docker compose exec -T ollama ollama list || true
+                exit 1
+              fi
+              
+              echo "Waiting for model installation... (elapsed: ${ELAPSED}s / ${TIMEOUT}s)"
+              sleep 20
+            done
