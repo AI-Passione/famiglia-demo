@@ -52,7 +52,7 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
-      - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
+      - OLLAMA_HOST=http://ollama:11434
       - OLLAMA_FALLBACK_MODEL=${OLLAMA_FALLBACK_MODEL:-gemma3:4b}
       - OLLAMA_API_KEY=${OLLAMA_API_KEY}
       - APP_ENV=${APP_ENV:-development}
@@ -191,9 +191,12 @@ services:
 
   ollama:
     image: ollama/ollama:latest
+    ports:
+      - "127.0.0.1:11434:11434"
     expose:
       - "11434"
     environment:
+      - OLLAMA_HOST=0.0.0.0
       - OLLAMA_KV_CACHE_TYPE=q8_0
       - OLLAMA_FLASH_ATTENTION=1
       - OLLAMA_KEEP_ALIVE=0
@@ -202,9 +205,10 @@ services:
       - ollama_data:/root/.ollama
     healthcheck:
       test: [ "CMD", "ollama", "list" ]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
 
 volumes:
   redis_data:
