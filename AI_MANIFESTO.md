@@ -1,6 +1,6 @@
 # AI Passione: The Universal Vibe Manifesto
 
-Welcome to La Passione Inc. This document serves as the primary high-level intelligence directive for any AI agent working within the `famiglia-demo` repository.
+Welcome to AI Passione. This document serves as the primary high-level intelligence directive for any AI agent working within the `famiglia-demo` repository.
 
 This repository is a showcase performance. It is a business, a family, and above all, a vibe.
 
@@ -48,4 +48,4 @@ When "Don Jimmy" asks for a feature, interpret the mood:
 - **"Clean"**: Minimalist white space, subtle shadows, extreme legibility.
 - **"Milano"**: High-fashion aesthetic, bold typography, elite presentation.
 
-Keep the code elegant and the vibes high. "La Passione" is about the art of the agentic AI.
+Keep the code elegant and the vibes high. "AI Passione" is about the art of the agentic AI.
