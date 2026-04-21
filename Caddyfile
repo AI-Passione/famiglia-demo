@@ -13,13 +13,13 @@
     header Referrer-Policy strict-origin-when-cross-origin
 
     # API Documentation
-    handle_path /docs* {
+    handle /docs* {
         reverse_proxy app:8000
     }
 
     # API Backend (Resilient for SSE and WebSockets)
     # The /api/ path is proxied to the app service
-    handle_path /api/* {
+    handle /api/* {
         reverse_proxy app:8000 {
             # Disable flush interval to support streaming (SSE)
             flush_interval -1
