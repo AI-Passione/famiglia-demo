@@ -5,7 +5,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "443:443/udp"
+      # - "443:443/udp" # Disabling HTTP/3 temporarily to resolve SSL protocol errors
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
