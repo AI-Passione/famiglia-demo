@@ -38,3 +38,86 @@ jobs:
       - name: Validate Docker Compose Stack
         working-directory: famiglia-demo
         run: docker compose config >/dev/null
+
+  build_test:
+    name: Docker Build Validation
+    needs: deployment_config
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Demo Repo
+        uses: actions/checkout@v4
+        with:
+          path: famiglia-demo
+
+      - name: Checkout Core Repo
+        uses: actions/checkout@v4
+        with:
+          repository: AI-Passione/famiglia-core
+          path: famiglia-core
+
+      - name: Prepare Environment
+        run: |
+          cp famiglia-demo/.env.example famiglia-demo/.env
+          echo "DEV_CHANNEL_ID=ci" >> famiglia-demo/.env
+
+      - name: Build Stack
+        working-directory: famiglia-demo
+        run: docker compose build
+
+  networking_validation:
+    name: Networking & Consistency Check
+    needs: deployment_config
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Validate Caddyfile Syntax
+        uses: docker://caddy:2-alpine
+        with:
+          args: caddy validate --config /github/workspace/Caddyfile
+
+      - name: Check Upstream Consistency
+        run: |
+          echo "Checking Caddyfile upstreams against Docker Compose services..."
+          MISSING_SERVICES=0
+          
+          # Extract service names from Caddyfile reverse_proxy directives
+          UPSTREAMS=$(grep 'reverse_proxy' Caddyfile | awk '{print $2}' | cut -d: -f1 | sort -u)
+          
+          # Get list of services from docker-compose.yml
+          COMPOSE_SERVICES=$(docker compose config --services)
+          
+          for service in $UPSTREAMS; do
+            if [[ "$service" == "{"* ]]; then
+               echo "Skipping dynamic/variable upstream: $service"
+               continue
+            fi
+            
+            if ! echo "$COMPOSE_SERVICES" | grep -qx "$service"; then
+              echo "❌ ERROR: Upstream '$service' found in Caddyfile but not defined in docker-compose.yml"
+              MISSING_SERVICES=1
+            else
+              echo "✅ Upstream '$service' matched in docker-compose.yml"
+            fi
+          done
+          
+          if [ $MISSING_SERVICES -ne 0 ]; then
+            exit 1
+          fi
+          echo "✅ All upstreams verified successfully."
+
+          echo "Running Path-Stripping Guard..."
+          STRIPPING_ERRORS=0
+          # Check for handle_path on critical prefixes (/api, /docs)
+          if grep -qE 'handle_path\s+/(api|docs)' Caddyfile; then
+            echo "❌ ERROR: 'handle_path' detected for /api or /docs in Caddyfile!"
+            echo "   This will strip the prefix and likely break backend routing."
+            echo "   Use 'handle' instead to preserve the prefix."
+            STRIPPING_ERRORS=1
+          fi
+
+          if [ $STRIPPING_ERRORS -ne 0 ]; then
+            exit 1
+          fi
+          echo "✅ Path-Stripping Guard passed."

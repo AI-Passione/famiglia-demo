@@ -49,3 +49,15 @@ fe-dev:
 fe-build:
 	cd $(FE_DIR) && VITE_BASE_PATH="/" npm run build
 	cp -r $(FE_DIR)/dist ./dist
+# 🚀 Deployment (Hetzner)
+include .env
+
+deploy:
+	@echo "🛰️  Deploying to $(SSH_HOST)..."
+	# Sync the Demo repo
+	ssh $(SSH_USER)@$(SSH_HOST) "mkdir -p ~/famiglia-demo"
+	rsync -avz --exclude '.git' --exclude 'node_modules' --exclude 'data' ./ $(SSH_USER)@$(SSH_HOST):~/famiglia-demo/
+	# Note: Ensure famiglia-core is also synced to ~/famiglia-core on the server
+	# Start the stack
+	ssh $(SSH_USER)@$(SSH_HOST) "cd ~/famiglia-demo && docker compose pull && docker compose up -d"
+	@echo "💎 Deployment complete at https://$(PRODUCTION_DOMAIN)"
