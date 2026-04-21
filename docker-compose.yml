@@ -5,14 +5,18 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "443:443/udp" # For HTTP/3 support
+      - "443:443/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     environment:
       - PRODUCTION_DOMAIN=${PRODUCTION_DOMAIN:-demo.aipassione.com}
-      - ACME_EMAIL=${ACME_EMAIL:-admin@ai-passione.com}
+      - ACME_EMAIL=${ACME_EMAIL:-jimmypang@aipassione.com}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
     depends_on:
       - frontend
       - app
@@ -20,24 +24,27 @@ services:
   frontend:
     image: ghcr.io/ai-passione/famiglia-core:production
     build:
-      context: ../famiglia-core
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: famiglia-demo/frontend.Dockerfile
+      args:
+        - VITE_BACKEND_BASE=${VITE_BACKEND_BASE}
+        - VITE_API_BASE=${VITE_API_BASE:-/api/v1}
     restart: always
-    working_dir: /app/src/famiglia_core/command_center/frontend
-    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "80"]
     expose:
       - "80"
-    environment:
-      - VITE_BACKEND_BASE=${VITE_BACKEND_BASE}
-      - VITE_API_BASE=${VITE_API_BASE:-/api/v1}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     depends_on:
       - app
 
   app:
     image: ghcr.io/ai-passione/famiglia-core:production
     build:
-      context: ../famiglia-core
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: famiglia-core/Dockerfile
     restart: always
     env_file:
       - .env
@@ -56,9 +63,19 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
-      - APP_ENV=${APP_ENV}
+      - APP_ENV=${APP_ENV:-production}
       - DUCKDB_DWH_PATH=/app/data/duckdb_dwh.db
       - FAMIGLIA_MODELS_CONFIG=/app/models.demo.json
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     depends_on:
       - postgres
       - redis

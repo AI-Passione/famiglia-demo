@@ -1,6 +1,6 @@
 {
     # Global options
-    email {$ACME_EMAIL:admin@ai-passione.com}
+    email {$ACME_EMAIL:jimmypang@aipassione.com}
 }
 
 {$PRODUCTION_DOMAIN:demo.aipassione.com} {
