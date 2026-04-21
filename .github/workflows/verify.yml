@@ -63,3 +63,46 @@ jobs:
       - name: Build Stack
         working-directory: famiglia-demo
         run: docker compose build
+
+  networking_validation:
+    name: Networking & Consistency Check
+    needs: deployment_config
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Validate Caddyfile Syntax
+        uses: docker://caddy:2-alpine
+        with:
+          args: caddy validate --config /github/workspace/Caddyfile
+
+      - name: Check Upstream Consistency
+        run: |
+          echo "Checking Caddyfile upstreams against Docker Compose services..."
+          MISSING_SERVICES=0
+          
+          # Extract service names from Caddyfile reverse_proxy directives
+          UPSTREAMS=$(grep 'reverse_proxy' Caddyfile | awk '{print $2}' | cut -d: -f1 | sort -u)
+          
+          # Get list of services from docker-compose.yml
+          COMPOSE_SERVICES=$(docker compose config --services)
+          
+          for service in $UPSTREAMS; do
+            if [[ "$service" == "{"* ]]; then
+               echo "Skipping dynamic/variable upstream: $service"
+               continue
+            fi
+            
+            if ! echo "$COMPOSE_SERVICES" | grep -qx "$service"; then
+              echo "❌ ERROR: Upstream '$service' found in Caddyfile but not defined in docker-compose.yml"
+              MISSING_SERVICES=1
+            else
+              echo "✅ Upstream '$service' matched in docker-compose.yml"
+            fi
+          done
+          
+          if [ $MISSING_SERVICES -ne 0 ]; then
+            exit 1
+          fi
+          echo "All upstreams verified successfully."
