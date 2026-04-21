@@ -267,7 +267,7 @@ jobs:
             export STACK_ROOT=/opt/famiglia
             cd "$STACK_ROOT/famiglia-demo"
 
-            echo "Verifying LLM Model Readiness (gemma3:4b)..."
+            echo "Verifying LLM Model Readiness (gemma3:1b)..."
             TIMEOUT=900 # 15 minutes
             START_TIME=$(date +%s)
             
@@ -276,8 +276,8 @@ jobs:
 
             while true; do
               # Check if the model exists in the ollama list
-              if sudo docker compose exec -T ollama ollama list | grep -q "gemma3:4b"; then
-                echo "SUCCESS: LLM Model gemma3:4b is confirmed installed and ready."
+              if sudo docker compose exec -T ollama ollama list | grep -q "gemma3:1b"; then
+                echo "SUCCESS: LLM Model gemma3:1b is confirmed installed and ready."
                 echo "Latest application output:"
                 sudo docker compose logs --tail=50 app || true
                 break

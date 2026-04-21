@@ -11,6 +11,12 @@
       "description": "Gemma 3 1B (Ultra-lightweight)",
       "ram_gb": 1.5
     },
+    "gemma3_4b": {
+      "tag": "gemma3:1b",
+      "provider": "ollama",
+      "description": "Gemma 3 1B (Aliased from 4B for Memory Efficiency)",
+      "ram_gb": 1.5
+    },
     "gemma3_local": {
       "tag": "gemma3:1b",
       "provider": "ollama",
