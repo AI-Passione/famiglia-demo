@@ -43,8 +43,8 @@ services:
   app:
     image: ghcr.io/ai-passione/famiglia-core:production
     build:
-      context: ..
-      dockerfile: famiglia-core/Dockerfile
+      context: ../famiglia-core
+      dockerfile: Dockerfile
     restart: always
     env_file:
       - .env
