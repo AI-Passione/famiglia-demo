@@ -133,7 +133,7 @@ jobs:
             SLACK_BOT_TOKEN_TOMMY,SLACK_APP_TOKEN_TOMMY,
             SLACK_BOT_TOKEN_BELLA,SLACK_APP_TOKEN_BELLA,
             SLACK_BOT_TOKEN_KOWALSKI,SLACK_APP_TOKEN_KOWALSKI,NOTION_API_KEY_KOWALSKI,
-            SSH_HOST
+            SSH_HOST,PRODUCTION_DOMAIN,ACME_EMAIL
           script: |
             set -eu
 
@@ -225,6 +225,7 @@ jobs:
               SLACK_BOT_TOKEN_TOMMY SLACK_APP_TOKEN_TOMMY
               SLACK_BOT_TOKEN_BELLA SLACK_APP_TOKEN_BELLA
               SLACK_BOT_TOKEN_KOWALSKI SLACK_APP_TOKEN_KOWALSKI NOTION_API_KEY_KOWALSKI
+              PRODUCTION_DOMAIN ACME_EMAIL
             )
             for var in "${VARS_TO_SYNC[@]}"; do
               # Use indirect expansion to get the value of the variable named by $var
@@ -236,12 +237,13 @@ jobs:
               fi
             done
 
-            # Dynamically set base URLs based on SSH_HOST (No ports, handled by Gateway)
-            if [ -n "${SSH_HOST:-}" ]; then
-              echo "FRONTEND_BASE_URL=\"http://$SSH_HOST\"" >> .env
-              echo "BACKEND_BASE_URL=\"http://$SSH_HOST\"" >> .env
-              echo "VITE_BACKEND_BASE=\"http://$SSH_HOST\"" >> .env
-              echo "Constructed Base URLs for host: $SSH_HOST"
+            # Dynamically set base URLs based on PRODUCTION_DOMAIN or SSH_HOST
+            TARGET_HOST="${PRODUCTION_DOMAIN:-$SSH_HOST}"
+            if [ -n "$TARGET_HOST" ]; then
+              echo "FRONTEND_BASE_URL=\"https://$TARGET_HOST\"" >> .env
+              echo "BACKEND_BASE_URL=\"https://$TARGET_HOST\"" >> .env
+              echo "VITE_BACKEND_BASE=\"https://$TARGET_HOST\"" >> .env
+              echo "Constructed Secure Base URLs for host: $TARGET_HOST"
             fi
 
             chmod 600 .env
