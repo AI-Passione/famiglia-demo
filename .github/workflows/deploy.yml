@@ -45,6 +45,10 @@ jobs:
       SLACK_BOT_TOKEN_SYSTEM: ${{ secrets.SLACK_BOT_TOKEN_SYSTEM }}
       USER_SLACK_ID: ${{ secrets.USER_SLACK_ID }}
       DEV_CHANNEL_ID: ${{ secrets.DEV_CHANNEL_ID }}
+      
+      # Domain & SSL
+      PRODUCTION_DOMAIN: demo.aipassione.com
+      ACME_EMAIL: ${{ secrets.ACME_EMAIL || 'admin@aipassione.com' }}
 
       # Agent Tokens - Alfredo
       SLACK_BOT_TOKEN_ALFREDO: ${{ secrets.SLACK_BOT_TOKEN_ALFREDO }}
