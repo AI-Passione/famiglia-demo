@@ -38,3 +38,28 @@ jobs:
       - name: Validate Docker Compose Stack
         working-directory: famiglia-demo
         run: docker compose config >/dev/null
+
+  build_test:
+    name: Docker Build Validation
+    needs: deployment_config
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Demo Repo
+        uses: actions/checkout@v4
+        with:
+          path: famiglia-demo
+
+      - name: Checkout Core Repo
+        uses: actions/checkout@v4
+        with:
+          repository: AI-Passione/famiglia-core
+          path: famiglia-core
+
+      - name: Prepare Environment
+        run: |
+          cp famiglia-demo/.env.example famiglia-demo/.env
+          echo "DEV_CHANNEL_ID=ci" >> famiglia-demo/.env
+
+      - name: Build Stack
+        working-directory: famiglia-demo
+        run: docker compose build

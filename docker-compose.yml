@@ -22,7 +22,7 @@ services:
       - app
 
   frontend:
-    image: ghcr.io/ai-passione/famiglia-core:production
+    image: ghcr.io/ai-passione/famiglia-frontend:production
     build:
       context: ..
       dockerfile: famiglia-demo/frontend.Dockerfile
