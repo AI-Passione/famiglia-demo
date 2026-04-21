@@ -105,4 +105,19 @@ jobs:
           if [ $MISSING_SERVICES -ne 0 ]; then
             exit 1
           fi
-          echo "All upstreams verified successfully."
+          echo "✅ All upstreams verified successfully."
+
+          echo "Running Path-Stripping Guard..."
+          STRIPPING_ERRORS=0
+          # Check for handle_path on critical prefixes (/api, /docs)
+          if grep -qE 'handle_path\s+/(api|docs)' Caddyfile; then
+            echo "❌ ERROR: 'handle_path' detected for /api or /docs in Caddyfile!"
+            echo "   This will strip the prefix and likely break backend routing."
+            echo "   Use 'handle' instead to preserve the prefix."
+            STRIPPING_ERRORS=1
+          fi
+
+          if [ $STRIPPING_ERRORS -ne 0 ]; then
+            exit 1
+          fi
+          echo "✅ Path-Stripping Guard passed."
